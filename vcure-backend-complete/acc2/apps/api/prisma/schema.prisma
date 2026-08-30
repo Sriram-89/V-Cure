@@ -1,0 +1,2506 @@
+// ============================================================
+// V-CURE — PRISMA SCHEMA
+// Source of Truth: 03_DATABASE_ARCHITECTURE.md (Parts 3A/3B/3C)
+//                  04_BUSINESS_DOMAIN_MODEL.md (Parts 4A/4B/4C)
+// Generated per Engineering Bible. Extends only — never redesigns.
+// ============================================================
+//
+// GOLDEN RULES APPLIED THROUGHOUT THIS FILE
+// - Singular PascalCase model names (Sec. 6)
+// - camelCase columns (Sec. 7)
+// - UUID primary keys, never auto-increment (Sec. 8)
+// - UUID foreign keys (Sec. 9)
+// - Every table: id, createdAt, updatedAt, deletedAt, createdBy?, updatedBy? (Sec. 10)
+// - Soft delete via deletedAt — never hard delete user-generated data (Sec. 11)
+// - History tables are append-only, never overwritten (Sec. 13)
+// - One owning module per table (Sec. 14)
+// - Every relationship declares cascade/delete/update behavior explicitly (Sec. 15)
+// - Sensitive medical tables are never cascade-hard-deleted (Sec. 16)
+// - Enums used instead of repeated free-text values (Sec. 22)
+// - Files: DB stores URL/path/type/size only, never binary blobs (Sec. 23)
+// - All timestamps UTC (Sec. 24)
+//
+// ============================================================
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["fullTextSearch"]
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ============================================================
+// ENUMS — Section 22 ENUM STRATEGY
+// ============================================================
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+  PREFER_NOT_TO_SAY
+}
+
+enum ActivityLevelEnum {
+  SEDENTARY
+  LIGHTLY_ACTIVE
+  MODERATELY_ACTIVE
+  VERY_ACTIVE
+  EXTREMELY_ACTIVE
+}
+
+enum MealType {
+  BREAKFAST
+  LUNCH
+  DINNER
+  SNACK
+  BEVERAGE
+}
+
+enum DiseaseSeverity {
+  MILD
+  MODERATE
+  SEVERE
+  CRITICAL
+}
+
+enum GoalType {
+  WEIGHT_LOSS
+  WEIGHT_GAIN
+  MUSCLE_GAIN
+  MAINTENANCE
+  DISEASE_MANAGEMENT
+  GENERAL_WELLNESS
+  PREGNANCY_CARE
+  ATHLETIC_PERFORMANCE
+}
+
+enum SubscriptionPlanType {
+  FREE
+  PREMIUM_MONTHLY
+  PREMIUM_YEARLY
+  FAMILY
+  CORPORATE
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  TRIALING
+  PAST_DUE
+  CANCELLED
+  EXPIRED
+}
+
+enum RoleType {
+  USER
+  ADMIN
+  DOCTOR
+  DIETITIAN
+  SUPPORT
+  SUPER_ADMIN
+}
+
+enum AccountStatus {
+  PENDING_VERIFICATION
+  ACTIVE
+  SUSPENDED
+  DEACTIVATED
+  DELETED
+}
+
+enum Severity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum ReportSourceType {
+  MANUAL_UPLOAD
+  OCR_EXTRACTED
+  LAB_PARTNER_SYNC
+  DOCTOR_UPLOAD
+}
+
+enum OCRStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  MANUAL_REVIEW_REQUIRED
+}
+
+enum FoodRestrictionType {
+  ALLERGY
+  DISEASE
+  RELIGIOUS
+  LIFESTYLE
+  MEDICATION_INTERACTION
+}
+
+enum RecommendationStatus {
+  GENERATED
+  DISPLAYED
+  ACCEPTED
+  REJECTED
+  SUBSTITUTED
+  EXPIRED
+}
+
+enum FeedbackType {
+  LIKE
+  DISLIKE
+  HELPFUL
+  NOT_HELPFUL
+}
+
+enum FeedbackReason {
+  TASTE
+  COST
+  AVAILABILITY
+  MEDICAL_ISSUE
+  TIME_CONSTRAINT
+  OTHER
+}
+
+enum SafetyValidationResult {
+  PASSED
+  BLOCKED_ALLERGY
+  BLOCKED_MEDICAL_CONDITION
+  BLOCKED_MEDICINE_INTERACTION
+  BLOCKED_OTHER
+}
+
+enum TrackingSource {
+  MANUAL
+  AI_SUGGESTED
+  DEVICE_SYNC
+  WEARABLE
+}
+
+enum MoodLevel {
+  VERY_LOW
+  LOW
+  NEUTRAL
+  GOOD
+  VERY_GOOD
+}
+
+enum ContentStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  FULFILLED
+  CANCELLED
+}
+
+enum ConversationRole {
+  USER
+  ASSISTANT
+  SYSTEM
+}
+
+enum PromptTemplateCategory {
+  MEAL_RECOMMENDATION
+  HEALTH_ASSESSMENT
+  RISK_ANALYSIS
+  LIFESTYLE_RECOMMENDATION
+  EXPLAINABILITY
+  OCR_EXTRACTION
+  CHAT
+  SAFETY_VALIDATION
+}
+
+enum AIProvider {
+  OPENAI_COMPATIBLE
+  GEMINI
+}
+
+enum FeatureFlagStatus {
+  ENABLED
+  DISABLED
+  ROLLOUT_PERCENTAGE
+}
+
+enum NotificationChannel {
+  PUSH
+  EMAIL
+  SMS
+  IN_APP
+}
+
+enum NotificationStatus {
+  QUEUED
+  SENT
+  FAILED
+  READ
+}
+
+enum SupportTicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+// ============================================================
+// AUTHENTICATION DOMAIN — Sec. 33
+// Owner: Authentication Module
+// Responsibilities: Authentication, Authorization, Session Management
+// ============================================================
+
+model User {
+  id                String        @id @default(uuid()) @db.Uuid
+  firebaseUid       String        @unique
+  email             String        @unique
+  emailVerified     Boolean       @default(false)
+  phoneNumber       String?       @unique
+  phoneVerified     Boolean       @default(false)
+  passwordHash      String? // null when Firebase-only auth
+  status            AccountStatus @default(PENDING_VERIFICATION)
+  onboardingComplete Boolean      @default(false)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime? // Sec. 11 — soft delete only
+  createdBy String?   @db.Uuid
+  updatedBy String?   @db.Uuid
+
+  // Relations — User is root of every business relationship (Sec. 4, Business Model)
+  profile               UserProfile?
+  addresses             Address[]
+  emergencyContacts     EmergencyContact[]
+  languagePreference    LanguagePreference?
+  notificationPreference NotificationPreference?
+  subscriptions         Subscription[]
+  settings              UserSettings?
+  userRoles             UserRole[]
+  sessions              Session[]
+  refreshTokens         RefreshToken[]
+  devices               Device[]
+  loginHistory          LoginHistory[]
+  passwordResets        PasswordReset[]
+
+  healthProfile   HealthProfile?
+  bodyMeasurements BodyMeasurements[]
+  bmiHistory      BMIHistory[]
+  healthGoals     HealthGoal[]
+  lifestyle       Lifestyle?
+  dailyLifestyles DailyLifestyle[]
+  vitals          Vitals[]
+  healthScores    HealthScore[]
+
+  medicalConditions MedicalCondition[]
+  medicines         Medicine[]
+  allergies         Allergy[]
+  medicalReports    MedicalReport[]
+  familyHistory     FamilyHistory[]
+  symptomHistory    SymptomHistory[]
+
+  mealPlans               MealPlan[]
+  recommendationHistory   RecommendationHistory[]
+  recommendationFeedback  RecommendationFeedback[]
+
+  mealTracking     MealTracking[]
+  waterTracking    WaterTracking[]
+  exerciseTracking ExerciseTracking[]
+  sleepTracking    SleepTracking[]
+  weightTracking   WeightTracking[]
+  moodTracking     MoodTracking[]
+  symptomTracking  SymptomTracking[]
+  habitTracking    HabitTracking[]
+  dailySummaries   DailySummary[]
+  weeklySummaries  WeeklySummary[]
+  monthlySummaries MonthlySummary[]
+
+  bookmarks         Bookmark[]
+  learningProgress  LearningProgress[]
+
+  shoppingLists ShoppingList[]
+  orderHistory  OrderHistory[]
+
+  conversations Conversation[]
+  aiFeedback    AIFeedback[]
+  aiUsage       AIUsage[]
+
+  supportTickets SupportTicket[]
+
+  @@index([email])
+  @@index([createdAt])
+  @@index([status])
+  @@map("users")
+}
+
+model Role {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        RoleType @unique
+  description String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  rolePermissions RolePermission[]
+  userRoles       UserRole[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String  @id @default(uuid()) @db.Uuid
+  code        String  @unique // e.g. "medical_report:read"
+  description String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  rolePermissions RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  id           String @id @default(uuid()) @db.Uuid
+  roleId       String @db.Uuid
+  permissionId String @db.Uuid
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model UserRole {
+  id     String @id @default(uuid()) @db.Uuid
+  userId String @db.Uuid
+  roleId String @db.Uuid
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, roleId])
+  @@index([userId])
+  @@map("user_roles")
+}
+
+model Session {
+  id           String    @id @default(uuid()) @db.Uuid
+  userId       String    @db.Uuid
+  deviceId     String?   @db.Uuid
+  ipAddress    String?
+  userAgent    String?
+  expiresAt    DateTime
+  revokedAt    DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+model Device {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @db.Uuid
+  fcmToken    String?  @unique
+  platform    String // ios | android | web
+  deviceModel String?
+  lastActiveAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([userId])
+  @@map("devices")
+}
+
+model LoginHistory {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  ipAddress String?
+  userAgent String?
+  success   Boolean
+  reason    String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@map("login_history")
+}
+
+model PasswordReset {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("password_resets")
+}
+
+// ============================================================
+// USER DOMAIN — Sec. 34
+// Owner: User Module
+// Responsibilities: Personal Information, Profile Settings, Localization
+// ============================================================
+
+model UserProfile {
+  id          String    @id @default(uuid()) @db.Uuid
+  userId      String    @unique @db.Uuid
+  firstName   String
+  lastName    String
+  dateOfBirth DateTime?
+  gender      Gender?
+  avatarUrl   String?
+  countryId   String?   @db.Uuid
+  stateId     String?   @db.Uuid
+  cityId      String?   @db.Uuid
+  religionId  String?   @db.Uuid
+
+  user     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  country  Country? @relation(fields: [countryId], references: [id], onDelete: SetNull)
+  state    State?   @relation(fields: [stateId], references: [id], onDelete: SetNull)
+  city     City?    @relation(fields: [cityId], references: [id], onDelete: SetNull)
+  religion Religion? @relation(fields: [religionId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdBy String?   @db.Uuid
+  updatedBy String?   @db.Uuid
+
+  @@index([userId])
+  @@map("user_profiles")
+}
+
+model Address {
+  id        String  @id @default(uuid()) @db.Uuid
+  userId    String  @db.Uuid
+  label     String? // Home, Work, Other
+  line1     String
+  line2     String?
+  cityId    String? @db.Uuid
+  stateId   String? @db.Uuid
+  countryId String? @db.Uuid
+  postalCode String?
+  latitude  Float?
+  longitude Float?
+  isDefault Boolean @default(false)
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  city    City?    @relation(fields: [cityId], references: [id], onDelete: SetNull)
+  state   State?   @relation(fields: [stateId], references: [id], onDelete: SetNull)
+  country Country? @relation(fields: [countryId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([userId])
+  @@map("addresses")
+}
+
+model EmergencyContact {
+  id           String  @id @default(uuid()) @db.Uuid
+  userId       String  @db.Uuid
+  name         String
+  relationship String
+  phoneNumber  String
+  email        String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([userId])
+  @@map("emergency_contacts")
+}
+
+model LanguagePreference {
+  id                String @id @default(uuid()) @db.Uuid
+  userId            String @unique @db.Uuid
+  primaryLanguageId String @db.Uuid
+  secondaryLanguageId String? @db.Uuid
+
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  primaryLanguage   Language @relation("PrimaryLanguage", fields: [primaryLanguageId], references: [id], onDelete: Restrict)
+  secondaryLanguage Language? @relation("SecondaryLanguage", fields: [secondaryLanguageId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("language_preferences")
+}
+
+model NotificationPreference {
+  id                 String  @id @default(uuid()) @db.Uuid
+  userId             String  @unique @db.Uuid
+  pushEnabled        Boolean @default(true)
+  emailEnabled       Boolean @default(true)
+  smsEnabled         Boolean @default(false)
+  mealReminders      Boolean @default(true)
+  waterReminders     Boolean @default(true)
+  exerciseReminders  Boolean @default(true)
+  medicineReminders  Boolean @default(true)
+  quietHoursStart    String? // "22:00"
+  quietHoursEnd      String? // "07:00"
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("notification_preferences")
+}
+
+model Subscription {
+  id                 String               @id @default(uuid()) @db.Uuid
+  userId             String               @db.Uuid
+  planId             String               @db.Uuid
+  status             SubscriptionStatus   @default(ACTIVE)
+  startDate          DateTime
+  endDate            DateTime?
+  autoRenew          Boolean              @default(true)
+  paymentProviderRef String?
+
+  user User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan SubscriptionPlan @relation(fields: [planId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([userId])
+  @@index([status])
+  @@map("subscriptions")
+}
+
+model UserSettings {
+  id                    String  @id @default(uuid()) @db.Uuid
+  userId                String  @unique @db.Uuid
+  measurementSystem     String  @default("metric") // metric | imperial
+  themePreference       String  @default("system")
+  dataSharingConsent    Boolean @default(false)
+  marketingConsent      Boolean @default(false)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("user_settings")
+}
+
+// ============================================================
+// HEALTH DOMAIN — Sec. 35
+// Owner: Health Module. Read by Recommendation Engine (Sec. 46 — read only, no writes).
+// Responsibilities: BMI, Calories, BMR, Body Metrics, Lifestyle Assessment
+// ============================================================
+
+model HealthProfile {
+  id                String            @id @default(uuid()) @db.Uuid
+  userId            String            @unique @db.Uuid
+  age               Int
+  gender            Gender
+  heightCm          Float
+  weightKg          Float
+  waistCm           Float?
+  activityLevel     ActivityLevelEnum
+  primaryGoal       GoalType
+  bmi               Float // derived, recalculated on every BodyMeasurements update
+  bmr               Float?
+  dailyCalorieTarget Float?
+  isComplete        Boolean           @default(false) // gates AI activation, Sec. 9 AI ACTIVATION
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict) // Sec. 16 — never hard-delete healthcare records
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdBy String?   @db.Uuid
+  updatedBy String?   @db.Uuid
+
+  @@index([userId])
+  @@map("health_profiles")
+}
+
+model BodyMeasurements {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String   @db.Uuid
+  heightCm     Float
+  weightKg     Float
+  waistCm      Float?
+  hipCm        Float?
+  chestCm      Float?
+  bodyFatPct   Float?
+  muscleMassKg Float?
+  measuredAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, measuredAt])
+  @@map("body_measurements")
+}
+
+// History Table — Sec. 13 / Sec. 48 — append-only, never overwritten
+model BMIHistory {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  bmi       Float
+  weightKg  Float
+  heightCm  Float
+  recordedAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, recordedAt])
+  @@map("bmi_history")
+}
+
+model HealthGoal {
+  id          String    @id @default(uuid()) @db.Uuid
+  userId      String    @db.Uuid
+  goalType    GoalType
+  targetValue Float?
+  targetDate  DateTime?
+  achieved    Boolean   @default(false)
+  achievedAt  DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([userId])
+  @@map("health_goals")
+}
+
+model Lifestyle {
+  id             String            @id @default(uuid()) @db.Uuid
+  userId         String            @unique @db.Uuid
+  occupation     String?
+  activityLevel  ActivityLevelEnum
+  smokingStatus  String? // never | former | current
+  alcoholStatus  String? // never | occasional | regular
+  stressLevel    String? // low | medium | high
+  sleepHoursAvg  Float?
+  waterIntakeGoalMl Int?
+  isComplete     Boolean           @default(false) // gates AI activation, Sec. 9
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@map("lifestyles")
+}
+
+model DailyLifestyle {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @db.Uuid
+  date       DateTime @db.Date
+  sleepHours Float?
+  stressLevel String?
+  screenTimeMinutes Int?
+  notes      String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, date])
+  @@index([userId, date])
+  @@map("daily_lifestyles")
+}
+
+model Vitals {
+  id                String   @id @default(uuid()) @db.Uuid
+  userId            String   @db.Uuid
+  systolicBP        Int?
+  diastolicBP       Int?
+  heartRateBpm      Int?
+  bloodGlucoseMgDl  Float?
+  spo2Pct           Float?
+  temperatureCelsius Float?
+  recordedAt        DateTime @default(now())
+  source            TrackingSource @default(MANUAL)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, recordedAt])
+  @@map("vitals")
+}
+
+// History Table — Sec. 48
+model HealthScore {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @db.Uuid
+  score       Float // 0-100
+  breakdown   Json // { nutrition: number, activity: number, sleep: number, ... }
+  calculatedAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, calculatedAt])
+  @@map("health_scores")
+}
+
+// ============================================================
+// MEDICAL DOMAIN — Sec. 36
+// Owner: Medical Module. Read by AI (Sec. 46 — read only, no writes).
+// Responsibilities: Diseases, Medicines, Allergies, Medical Reports, Lab Reports
+// Sec. 25/61 — sensitive data, encrypted at rest, never exposed directly.
+// ============================================================
+
+model DiseaseCategory {
+  id          String  @id @default(uuid()) @db.Uuid
+  name        String  @unique
+  description String?
+
+  diseases Disease[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@map("disease_categories")
+}
+
+// Master/reference table — Sec. 49
+model Disease {
+  id         String          @id @default(uuid()) @db.Uuid
+  categoryId String          @db.Uuid
+  name       String          @unique
+  description String?
+  isChronic  Boolean         @default(false)
+  isCritical Boolean         @default(false) // e.g. kidney/liver disease — Sec. 54 Healthcare Safety Rules
+
+  category DiseaseCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  medicalConditions MedicalCondition[]
+  foodRestrictions  FoodRestriction[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([name])
+  @@map("diseases")
+}
+
+model MedicalCondition {
+  id          String          @id @default(uuid()) @db.Uuid
+  userId      String          @db.Uuid
+  diseaseId   String          @db.Uuid
+  severity    DiseaseSeverity
+  diagnosedAt DateTime?
+  isActive    Boolean         @default(true)
+  notes       String?
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Restrict)
+  disease Disease @relation(fields: [diseaseId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdBy String?   @db.Uuid
+  updatedBy String?   @db.Uuid
+
+  @@index([userId])
+  @@index([diseaseId])
+  @@map("medical_conditions")
+}
+
+model Medicine {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String   @db.Uuid
+  name         String
+  dosage       String?
+  frequency    String?
+  startDate    DateTime?
+  endDate      DateTime?
+  isActive     Boolean  @default(true)
+  prescribedBy String?
+
+  user     User              @relation(fields: [userId], references: [id], onDelete: Restrict)
+  schedules MedicineSchedule[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdBy String?   @db.Uuid
+  updatedBy String?   @db.Uuid
+
+  @@index([userId])
+  @@index([userId, isActive])
+  @@map("medicines")
+}
+
+// History Table — Sec. 48 Medicine History
+model MedicineSchedule {
+  id         String   @id @default(uuid()) @db.Uuid
+  medicineId String   @db.Uuid
+  scheduledAt DateTime
+  takenAt    DateTime?
+  skipped    Boolean  @default(false)
+
+  medicine Medicine @relation(fields: [medicineId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([medicineId, scheduledAt])
+  @@map("medicine_schedules")
+}
+
+model AllergyType {
+  id          String  @id @default(uuid()) @db.Uuid
+  name        String  @unique // e.g. Peanuts, Lactose, Gluten, Shellfish
+  description String?
+
+  allergies Allergy[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@map("allergy_types")
+}
+
+model Allergy {
+  id            String          @id @default(uuid()) @db.Uuid
+  userId        String          @db.Uuid
+  allergyTypeId String          @db.Uuid
+  severity      DiseaseSeverity
+  reaction      String?
+  diagnosedAt   DateTime?
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Restrict)
+  allergyType AllergyType @relation(fields: [allergyTypeId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdBy String?   @db.Uuid
+  updatedBy String?   @db.Uuid
+
+  @@index([userId])
+  @@index([allergyTypeId])
+  @@map("allergies")
+}
+
+model MedicalReport {
+  id           String           @id @default(uuid()) @db.Uuid
+  userId       String           @db.Uuid
+  title        String
+  reportDate   DateTime
+  sourceType   ReportSourceType @default(MANUAL_UPLOAD)
+  notes        String?
+
+  user  User               @relation(fields: [userId], references: [id], onDelete: Restrict)
+  files MedicalReportFile[]
+  labResults LabResult[]
+  ocrResults OCRResult[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime? // Sec. 67 — medical reports retained permanently; deletedAt hides, never purges
+  createdBy String?   @db.Uuid
+  updatedBy String?   @db.Uuid
+
+  @@index([userId, reportDate])
+  @@map("medical_reports")
+}
+
+// Sec. 23 — File Storage Policy: DB stores only URL/path/type/size, actual file stays in cloud storage
+model MedicalReportFile {
+  id              String   @id @default(uuid()) @db.Uuid
+  medicalReportId String   @db.Uuid
+  fileUrl         String
+  storagePath     String
+  fileType        String // pdf | jpg | png
+  sizeBytes       Int
+  uploadedAt      DateTime @default(now())
+
+  medicalReport MedicalReport @relation(fields: [medicalReportId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+
+  @@index([medicalReportId])
+  @@map("medical_report_files")
+}
+
+model LabResult {
+  id              String   @id @default(uuid()) @db.Uuid
+  medicalReportId String   @db.Uuid
+  testName        String
+  value           String
+  unit            String?
+  referenceRange  String?
+  isAbnormal      Boolean  @default(false)
+
+  medicalReport MedicalReport @relation(fields: [medicalReportId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+
+  @@index([medicalReportId])
+  @@map("lab_results")
+}
+
+// OCR Pipeline output — Sec. FIRST TASK / AI Responsibilities
+model OCRResult {
+  id              String    @id @default(uuid()) @db.Uuid
+  medicalReportId String    @db.Uuid
+  status          OCRStatus @default(PENDING)
+  rawExtractedText String?  @db.Text
+  structuredData  Json? // parsed key-value fields prior to human review
+  confidenceScore Float?
+  reviewedByUser  Boolean   @default(false)
+  errorMessage    String?
+
+  medicalReport MedicalReport @relation(fields: [medicalReportId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([medicalReportId])
+  @@index([status])
+  @@map("ocr_results")
+}
+
+model FamilyHistory {
+  id          String  @id @default(uuid()) @db.Uuid
+  userId      String  @db.Uuid
+  relation    String // father | mother | sibling | grandparent
+  condition   String
+  notes       String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([userId])
+  @@map("family_history")
+}
+
+// History Table — Sec. 48
+model SymptomHistory {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @db.Uuid
+  symptom    String
+  severity   Severity
+  notedAt    DateTime @default(now())
+  resolvedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, notedAt])
+  @@map("symptom_history")
+}
+
+// ============================================================
+// NUTRITION DOMAIN — Sec. 37
+// Owner: Nutrition Module
+// Responsibilities: Nutrition Data, Food Database, Serving Information
+// ============================================================
+
+model FoodCategory {
+  id          String  @id @default(uuid()) @db.Uuid
+  name        String  @unique
+  description String?
+
+  foods Food[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@map("food_categories")
+}
+
+// Master table — Sec. 49 / searchable — Sec. 20/56
+model Food {
+  id          String  @id @default(uuid()) @db.Uuid
+  categoryId  String  @db.Uuid
+  name        String
+  description String?
+  isVegetarian Boolean @default(true)
+  isVegan     Boolean  @default(false)
+
+  category FoodCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  nutrition    FoodNutrition?
+  servings     FoodServing[]
+  restrictions FoodRestriction[]
+  seasons      FoodSeason[]
+  regionalFoods RegionalFood[]
+  recipeIngredients RecipeIngredient[]
+  medicineInteractions FoodMedicineInteraction[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([name])
+  @@index([categoryId])
+  @@map("foods")
+}
+
+model FoodNutrition {
+  id            String @id @default(uuid()) @db.Uuid
+  foodId        String @unique @db.Uuid
+  caloriesKcal  Float
+  proteinG      Float
+  carbsG        Float
+  fatG          Float
+  fiberG        Float?
+  sugarG        Float?
+  sodiumMg      Float?
+
+  food Food @relation(fields: [foodId], references: [id], onDelete: Cascade)
+
+  micronutrients FoodMicronutrient[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("food_nutrition")
+}
+
+model FoodServing {
+  id           String @id @default(uuid()) @db.Uuid
+  foodId       String @db.Uuid
+  servingName  String // "1 cup", "100g", "1 medium"
+  gramsEquivalent Float
+
+  food Food @relation(fields: [foodId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([foodId])
+  @@map("food_servings")
+}
+
+model FoodRestriction {
+  id     String              @id @default(uuid()) @db.Uuid
+  foodId String              @db.Uuid
+  type   FoodRestrictionType
+  diseaseId String?          @db.Uuid
+  allergyTypeId String?      @db.Uuid
+  reason String?
+
+  food    Food     @relation(fields: [foodId], references: [id], onDelete: Cascade)
+  disease Disease? @relation(fields: [diseaseId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@index([foodId])
+  @@map("food_restrictions")
+}
+
+// Master/reference table — Food<->Drug interaction catalog.
+// ADDITIVE EXTENSION (Phase 2): FoodRestriction only links to Disease/AllergyType
+// (no medicineId column), so it cannot express "this food interacts with this
+// drug". Medicine (Medical Domain) is a per-user instance table (name is free
+// text a user typed), not a drug catalog — matching against it directly would
+// be fragile. This table is a small, independent generic-drug-name catalog
+// that MedicineInteractionRule joins against Medicine.name (case-insensitive).
+// No existing table is renamed, removed, or restructured — pure addition.
+model FoodMedicineInteraction {
+  id                 String   @id @default(uuid()) @db.Uuid
+  foodId             String   @db.Uuid
+  medicineName       String // generic/common drug name, e.g. "Warfarin"
+  interactionSeverity Severity @default(MEDIUM)
+  description        String   @db.Text
+
+  food Food @relation(fields: [foodId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([foodId])
+  @@index([medicineName])
+  @@map("food_medicine_interactions")
+}
+
+// Reference catalogs, normalized — Sec. 4 Normalization
+model Micronutrient {
+  id   String @id @default(uuid()) @db.Uuid
+  name String @unique
+  unit String
+
+  foodLinks FoodMicronutrient[]
+
+  createdAt DateTime @default(now())
+
+  @@map("micronutrients")
+}
+
+model Macronutrient {
+  id   String @id @default(uuid()) @db.Uuid
+  name String @unique
+  unit String
+
+  createdAt DateTime @default(now())
+
+  @@map("macronutrients")
+}
+
+model Vitamin {
+  id   String @id @default(uuid()) @db.Uuid
+  name String @unique // Vitamin A, B12, C, D, ...
+  unit String
+
+  createdAt DateTime @default(now())
+
+  @@map("vitamins")
+}
+
+model Mineral {
+  id   String @id @default(uuid()) @db.Uuid
+  name String @unique // Iron, Calcium, Zinc, ...
+  unit String
+
+  createdAt DateTime @default(now())
+
+  @@map("minerals")
+}
+
+// Join table normalizing Food <-> Micronutrient/Vitamin/Mineral quantities
+model FoodMicronutrient {
+  id              String @id @default(uuid()) @db.Uuid
+  foodNutritionId String @db.Uuid
+  micronutrientId String @db.Uuid
+  amount          Float
+
+  foodNutrition FoodNutrition @relation(fields: [foodNutritionId], references: [id], onDelete: Cascade)
+  micronutrient Micronutrient @relation(fields: [micronutrientId], references: [id], onDelete: Restrict)
+
+  @@unique([foodNutritionId, micronutrientId])
+  @@map("food_micronutrients")
+}
+
+model NutritionFact {
+  id      String @id @default(uuid()) @db.Uuid
+  title   String
+  content String @db.Text
+  source  String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@map("nutrition_facts")
+}
+
+model FoodSeason {
+  id     String @id @default(uuid()) @db.Uuid
+  foodId String @db.Uuid
+  season String // spring | summer | monsoon | winter | year_round
+  regionId String? @db.Uuid
+
+  food Food @relation(fields: [foodId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([foodId])
+  @@map("food_seasons")
+}
+
+model RegionalFood {
+  id       String @id @default(uuid()) @db.Uuid
+  foodId   String @db.Uuid
+  countryId String @db.Uuid
+  localName String?
+  popularity Int?  // 1-100 ranking, used by Recommendation Engine regional weighting
+
+  food    Food    @relation(fields: [foodId], references: [id], onDelete: Cascade)
+  country Country @relation(fields: [countryId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([foodId])
+  @@index([countryId])
+  @@map("regional_foods")
+}
+
+// ============================================================
+// RECIPE DOMAIN — Sec. 38
+// Owner: Recipe Module
+// Responsibilities: Healthy Recipes, Cooking Instructions, Preparation Videos
+// ============================================================
+
+model RecipeCategory {
+  id   String @id @default(uuid()) @db.Uuid
+  name String @unique
+
+  recipes Recipe[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@map("recipe_categories")
+}
+
+model Recipe {
+  id              String   @id @default(uuid()) @db.Uuid
+  categoryId      String   @db.Uuid
+  title           String
+  description     String?  @db.Text
+  prepTimeMinutes Int
+  cookTimeMinutes Int
+  servings        Int
+  difficulty      String? // easy | medium | hard
+  status          ContentStatus @default(DRAFT)
+
+  category RecipeCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  ingredients RecipeIngredient[]
+  steps       RecipeStep[]
+  videos      RecipeVideo[]
+  nutrition   RecipeNutrition?
+  images      RecipeImage[]
+  meals       Meal[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdBy String?   @db.Uuid
+  updatedBy String?   @db.Uuid
+
+  @@index([title])
+  @@index([categoryId])
+  @@map("recipes")
+}
+
+model RecipeIngredient {
+  id       String @id @default(uuid()) @db.Uuid
+  recipeId String @db.Uuid
+  foodId   String @db.Uuid
+  quantity Float
+  unit     String
+  notes    String?
+
+  recipe Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  food   Food   @relation(fields: [foodId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+
+  @@index([recipeId])
+  @@map("recipe_ingredients")
+}
+
+model RecipeStep {
+  id          String @id @default(uuid()) @db.Uuid
+  recipeId    String @db.Uuid
+  stepNumber  Int
+  instruction String @db.Text
+  durationMinutes Int?
+
+  recipe Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([recipeId, stepNumber])
+  @@map("recipe_steps")
+}
+
+model RecipeVideo {
+  id       String @id @default(uuid()) @db.Uuid
+  recipeId String @db.Uuid
+  videoUrl String
+  thumbnailUrl String?
+  durationSeconds Int?
+
+  recipe Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([recipeId])
+  @@map("recipe_videos")
+}
+
+model RecipeNutrition {
+  id           String @id @default(uuid()) @db.Uuid
+  recipeId     String @unique @db.Uuid
+  caloriesKcal Float
+  proteinG     Float
+  carbsG       Float
+  fatG         Float
+  fiberG       Float?
+  perServing   Boolean @default(true)
+
+  recipe Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("recipe_nutrition")
+}
+
+model RecipeImage {
+  id       String @id @default(uuid()) @db.Uuid
+  recipeId String @db.Uuid
+  imageUrl String
+  isPrimary Boolean @default(false)
+
+  recipe Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([recipeId])
+  @@map("recipe_images")
+}
+
+// ============================================================
+// RECOMMENDATION DOMAIN — Sec. 39
+// Owner: Recommendation Module
+// Responsibilities: Personalized Recommendations, Safety Validation, Recommendation History
+// Business Rule (Sec. 55): valid only if Health+Medical+Lifestyle complete AND Safety Engine approves.
+// ============================================================
+
+model MealPlan {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  date      DateTime @db.Date
+  isActive  Boolean  @default(true)
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Restrict)
+  meals Meal[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@unique([userId, date])
+  @@index([userId, date])
+  @@map("meal_plans")
+}
+
+model Meal {
+  id         String   @id @default(uuid()) @db.Uuid
+  mealPlanId String   @db.Uuid
+  recipeId   String?  @db.Uuid
+  mealType   MealType
+  scheduledAt DateTime?
+
+  mealPlan MealPlan @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
+  recipe   Recipe?  @relation(fields: [recipeId], references: [id], onDelete: SetNull)
+
+  recommendation   MealRecommendation?
+  alternatives     MealAlternative[]
+  restrictions     MealRestriction[]
+  mealTracking     MealTracking[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([mealPlanId])
+  @@index([mealType])
+  @@map("meals")
+}
+
+// Sec. 50 AI Explainability Policy — every recommendation must answer why/why-not/nutrients/benefit
+model MealRecommendation {
+  id         String   @id @default(uuid()) @db.Uuid
+  mealId     String   @unique @db.Uuid
+  confidenceScoreId String? @unique @db.Uuid
+  safetyValidationId String @db.Uuid
+  generatedByModel String? // model/version identifier, never expose internal prompt (Sec. Security)
+  status     RecommendationStatus @default(GENERATED)
+
+  meal             Meal              @relation(fields: [mealId], references: [id], onDelete: Cascade)
+  confidenceScore  ConfidenceScore?  @relation(fields: [confidenceScoreId], references: [id], onDelete: SetNull)
+  safetyValidation SafetyValidation  @relation(fields: [safetyValidationId], references: [id], onDelete: Restrict)
+  reasons          MealReason[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@map("meal_recommendations")
+}
+
+model MealReason {
+  id                   String @id @default(uuid()) @db.Uuid
+  mealRecommendationId String @db.Uuid
+  reasonText           String @db.Text // human-readable explanation — never "because I think so" (Sec. 50)
+  nutrientFocus        String?
+
+  mealRecommendation MealRecommendation @relation(fields: [mealRecommendationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([mealRecommendationId])
+  @@map("meal_reasons")
+}
+
+model MealAlternative {
+  id            String @id @default(uuid()) @db.Uuid
+  mealId        String @db.Uuid
+  alternativeRecipeId String @db.Uuid
+  reason        String?
+
+  meal Meal @relation(fields: [mealId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([mealId])
+  @@map("meal_alternatives")
+}
+
+model MealRestriction {
+  id      String              @id @default(uuid()) @db.Uuid
+  mealId  String              @db.Uuid
+  type    FoodRestrictionType
+  reason  String
+
+  meal Meal @relation(fields: [mealId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([mealId])
+  @@map("meal_restrictions")
+}
+
+// History Table — Sec. 48 Recommendation History
+model RecommendationHistory {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  payload   Json // full snapshot of the recommendation as delivered
+  generatedAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, generatedAt])
+  @@map("recommendation_history")
+}
+
+// Sec. 51 User Feedback Loop
+model RecommendationFeedback {
+  id        String          @id @default(uuid()) @db.Uuid
+  userId    String          @db.Uuid
+  mealId    String          @db.Uuid
+  feedback  FeedbackType
+  reason    FeedbackReason?
+  comment   String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([mealId])
+  @@map("recommendation_feedback")
+}
+
+// Sec. 54 Healthcare Safety Rules enforced here — every AI output passes Safety Engine before Rule Engine
+model SafetyValidation {
+  id            String                 @id @default(uuid()) @db.Uuid
+  userId        String                 @db.Uuid
+  result        SafetyValidationResult
+  blockedReason String?
+  checkedAllergies Boolean @default(true)
+  checkedMedicines Boolean @default(true)
+  checkedConditions Boolean @default(true)
+
+  mealRecommendations MealRecommendation[]
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([result])
+  @@map("safety_validations")
+}
+
+model ConfidenceScore {
+  id     String @id @default(uuid()) @db.Uuid
+  score  Float // 0.0 - 1.0
+  basis  Json? // factors contributing to the score
+
+  mealRecommendation MealRecommendation?
+
+  createdAt DateTime @default(now())
+
+  @@map("confidence_scores")
+}
+
+// ============================================================
+// TRACKING DOMAIN — Sec. 40
+// Owner: Tracking Module. Updates Health Score (Sec. 46).
+// Responsibilities: Daily Tracking, Progress Analysis
+// ============================================================
+
+model MealTracking {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  mealId    String?  @db.Uuid
+  consumedAt DateTime @default(now())
+  completed Boolean  @default(true)
+  source    TrackingSource @default(MANUAL)
+
+  user User  @relation(fields: [userId], references: [id], onDelete: Restrict)
+  meal Meal? @relation(fields: [mealId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, consumedAt])
+  @@map("meal_tracking")
+}
+
+model WaterTracking {
+  id       String   @id @default(uuid()) @db.Uuid
+  userId   String   @db.Uuid
+  amountMl Int
+  loggedAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, loggedAt])
+  @@map("water_tracking")
+}
+
+model ExerciseTracking {
+  id              String   @id @default(uuid()) @db.Uuid
+  userId          String   @db.Uuid
+  activityType    String
+  durationMinutes Int
+  caloriesBurned  Float?
+  performedAt     DateTime @default(now())
+  source          TrackingSource @default(MANUAL)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, performedAt])
+  @@map("exercise_tracking")
+}
+
+model SleepTracking {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @db.Uuid
+  sleepStart DateTime
+  sleepEnd   DateTime
+  qualityScore Int? // 1-5
+  source     TrackingSource @default(MANUAL)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, sleepStart])
+  @@map("sleep_tracking")
+}
+
+// History Table — Sec. 48 Weight History
+model WeightTracking {
+  id       String   @id @default(uuid()) @db.Uuid
+  userId   String   @db.Uuid
+  weightKg Float
+  loggedAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, loggedAt])
+  @@map("weight_tracking")
+}
+
+model MoodTracking {
+  id       String    @id @default(uuid()) @db.Uuid
+  userId   String    @db.Uuid
+  mood     MoodLevel
+  notes    String?
+  loggedAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, loggedAt])
+  @@map("mood_tracking")
+}
+
+model SymptomTracking {
+  id       String   @id @default(uuid()) @db.Uuid
+  userId   String   @db.Uuid
+  symptom  String
+  severity Severity
+  loggedAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, loggedAt])
+  @@map("symptom_tracking")
+}
+
+model HabitTracking {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  habitName String
+  streak    Int      @default(0)
+  lastCompletedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@map("habit_tracking")
+}
+
+// Aggregation tables — Sec. 40 Progress Analysis; pre-computed, non-destructive rollups
+model DailySummary {
+  id             String   @id @default(uuid()) @db.Uuid
+  userId         String   @db.Uuid
+  date           DateTime @db.Date
+  caloriesConsumed Float?
+  caloriesBurned Float?
+  waterMl        Int?
+  sleepHours     Float?
+  habitScore     Float?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, date])
+  @@index([userId, date])
+  @@map("daily_summaries")
+}
+
+model WeeklySummary {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String   @db.Uuid
+  weekStartDate DateTime @db.Date
+  avgCalories  Float?
+  avgWaterMl   Int?
+  avgSleepHours Float?
+  habitScoreAvg Float?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, weekStartDate])
+  @@index([userId, weekStartDate])
+  @@map("weekly_summaries")
+}
+
+model MonthlySummary {
+  id            String   @id @default(uuid()) @db.Uuid
+  userId        String   @db.Uuid
+  monthStartDate DateTime @db.Date
+  avgCalories   Float?
+  avgWaterMl    Int?
+  avgSleepHours Float?
+  healthScoreDelta Float?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, monthStartDate])
+  @@index([userId, monthStartDate])
+  @@map("monthly_summaries")
+}
+
+// ============================================================
+// EDUCATION DOMAIN — Sec. 41
+// Owner: Education Module. Independent of other domains (Sec. 46).
+// Responsibilities: Educational Content, Health Awareness
+// ============================================================
+
+model ArticleCategory {
+  id   String @id @default(uuid()) @db.Uuid
+  name String @unique
+
+  articles Article[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@map("article_categories")
+}
+
+model Article {
+  id         String        @id @default(uuid()) @db.Uuid
+  categoryId String        @db.Uuid
+  title      String
+  content    String        @db.Text
+  status     ContentStatus @default(DRAFT)
+  publishedAt DateTime?
+
+  category ArticleCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  bookmarks Bookmark[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdBy String?   @db.Uuid
+  updatedBy String?   @db.Uuid
+
+  @@index([title])
+  @@index([status])
+  @@map("articles")
+}
+
+model Video {
+  id          String        @id @default(uuid()) @db.Uuid
+  title       String
+  videoUrl    String
+  thumbnailUrl String?
+  durationSeconds Int?
+  status      ContentStatus @default(DRAFT)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@map("videos")
+}
+
+model HealthTip {
+  id      String  @id @default(uuid()) @db.Uuid
+  title   String
+  content String  @db.Text
+  tags    String[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@map("health_tips")
+}
+
+model NutritionGuide {
+  id      String @id @default(uuid()) @db.Uuid
+  title   String
+  content String @db.Text
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@map("nutrition_guides")
+}
+
+model DiseaseGuide {
+  id        String  @id @default(uuid()) @db.Uuid
+  diseaseId String  @db.Uuid
+  title     String
+  content   String  @db.Text
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([diseaseId])
+  @@map("disease_guides")
+}
+
+model Course {
+  id          String @id @default(uuid()) @db.Uuid
+  title       String
+  description String? @db.Text
+  status      ContentStatus @default(DRAFT)
+
+  learningProgress LearningProgress[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@map("courses")
+}
+
+model Bookmark {
+  id        String  @id @default(uuid()) @db.Uuid
+  userId    String  @db.Uuid
+  articleId String? @db.Uuid
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  article Article? @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, articleId])
+  @@index([userId])
+  @@map("bookmarks")
+}
+
+model LearningProgress {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  courseId  String   @db.Uuid
+  progressPct Float  @default(0)
+  completedAt DateTime?
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, courseId])
+  @@index([userId])
+  @@map("learning_progress")
+}
+
+// ============================================================
+// MARKETPLACE DOMAIN — Sec. 42
+// Owner: Marketplace Module. Independent of other domains (Sec. 46).
+// Responsibilities: Shopping, Nearby Stores, Affiliate Revenue
+// ============================================================
+
+model StoreCategory {
+  id   String @id @default(uuid()) @db.Uuid
+  name String @unique
+
+  stores Store[]
+
+  createdAt DateTime @default(now())
+
+  @@map("store_categories")
+}
+
+model Store {
+  id         String  @id @default(uuid()) @db.Uuid
+  categoryId String  @db.Uuid
+  name       String
+  latitude   Float?
+  longitude  Float?
+  cityId     String? @db.Uuid
+
+  category StoreCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  city     City?         @relation(fields: [cityId], references: [id], onDelete: SetNull)
+  products StoreProduct[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([cityId])
+  @@map("stores")
+}
+
+model StoreProduct {
+  id      String @id @default(uuid()) @db.Uuid
+  storeId String @db.Uuid
+  name    String
+  price   Float?
+  currency String @default("USD")
+  inStock Boolean @default(true)
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  shoppingItems ShoppingItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([storeId])
+  @@map("store_products")
+}
+
+model ShoppingList {
+  id     String  @id @default(uuid()) @db.Uuid
+  userId String  @db.Uuid
+  name   String  @default("My Shopping List")
+
+  user  User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items ShoppingItem[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([userId])
+  @@map("shopping_lists")
+}
+
+model ShoppingItem {
+  id             String   @id @default(uuid()) @db.Uuid
+  shoppingListId String   @db.Uuid
+  foodId         String?  @db.Uuid
+  storeProductId String?  @db.Uuid
+  name           String
+  quantity       Float?
+  unit           String?
+  purchased      Boolean  @default(false)
+
+  shoppingList ShoppingList  @relation(fields: [shoppingListId], references: [id], onDelete: Cascade)
+  storeProduct StoreProduct? @relation(fields: [storeProductId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([shoppingListId])
+  @@map("shopping_items")
+}
+
+model AffiliatePartner {
+  id      String @id @default(uuid()) @db.Uuid
+  name    String @unique
+  website String?
+  commissionPct Float?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@map("affiliate_partners")
+}
+
+model HealthyRestaurant {
+  id        String  @id @default(uuid()) @db.Uuid
+  name      String
+  cityId    String? @db.Uuid
+  latitude  Float?
+  longitude Float?
+
+  city  City?          @relation(fields: [cityId], references: [id], onDelete: SetNull)
+  menus RestaurantMenu[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([cityId])
+  @@map("healthy_restaurants")
+}
+
+model RestaurantMenu {
+  id           String  @id @default(uuid()) @db.Uuid
+  restaurantId String  @db.Uuid
+  itemName     String
+  caloriesKcal Float?
+  price        Float?
+
+  restaurant HealthyRestaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([restaurantId])
+  @@map("restaurant_menus")
+}
+
+model OrderHistory {
+  id       String      @id @default(uuid()) @db.Uuid
+  userId   String      @db.Uuid
+  status   OrderStatus @default(PENDING)
+  totalAmount Float?
+  currency String      @default("USD")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@map("order_history")
+}
+
+// ============================================================
+// AI DOMAIN — Sec. 43
+// Owner: AI Module
+// Responsibilities: Chat, Knowledge Base, Prompt Management, AI Analytics
+// Sec. Security — never expose prompts or internal AI logic through this schema's
+// application-layer read paths; PromptTemplate content is service-internal only.
+// ============================================================
+
+model Conversation {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  title     String?
+  isActive  Boolean  @default(true)
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages Message[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([userId])
+  @@map("conversations")
+}
+
+model Message {
+  id             String            @id @default(uuid()) @db.Uuid
+  conversationId String            @db.Uuid
+  role           ConversationRole
+  content        String            @db.Text
+  // Formatter output only — raw LLM output must never be persisted/returned directly (AI RULES)
+  passedSafetyEngine Boolean        @default(false)
+  passedRuleEngine   Boolean        @default(false)
+  passedValidation   Boolean        @default(false)
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([conversationId, createdAt])
+  @@map("messages")
+}
+
+// Sec. Security — "Never hardcode prompts" — templates are versioned and DB-managed, never inline in code
+model PromptTemplate {
+  id          String                  @id @default(uuid()) @db.Uuid
+  name        String                  @unique
+  category    PromptTemplateCategory
+  version     Int                     @default(1)
+  templateBody String                 @db.Text
+  variables   Json? // documents expected interpolation variables
+  isActive    Boolean                 @default(true)
+
+  promptHistory PromptHistory[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdBy String?   @db.Uuid
+  updatedBy String?   @db.Uuid
+
+  @@index([category])
+  @@index([name, version])
+  @@map("prompt_templates")
+}
+
+// History Table — every prompt template change is versioned, never overwritten silently
+model PromptHistory {
+  id               String   @id @default(uuid()) @db.Uuid
+  promptTemplateId String   @db.Uuid
+  previousBody     String   @db.Text
+  changedBy        String?  @db.Uuid
+  changeReason     String?
+
+  promptTemplate PromptTemplate @relation(fields: [promptTemplateId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([promptTemplateId])
+  @@map("prompt_history")
+}
+
+// RAG knowledge base — Sec. AI RESPONSIBILITIES: Knowledge Base, RAG
+model KnowledgeArticle {
+  id        String  @id @default(uuid()) @db.Uuid
+  title     String
+  content   String  @db.Text
+  sourceType String // medical_guideline | nutrition_science | internal_policy
+  sourceRef String?
+  isActive  Boolean @default(true)
+
+  embeddings Embedding[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([sourceType])
+  @@map("knowledge_articles")
+}
+
+// Vector Database Integration — Sec. AI TECH STACK. The actual vector lives in the
+// Vector DB (VECTOR_DB_URL); this table stores the pointer + metadata for traceability.
+model Embedding {
+  id                 String  @id @default(uuid()) @db.Uuid
+  knowledgeArticleId String  @db.Uuid
+  vectorStoreId      String // id/key of the vector in the external vector database
+  model              String // embedding model identifier, e.g. "text-embedding-3-large"
+  dimensions         Int
+  chunkIndex         Int    @default(0)
+  chunkText          String @db.Text
+
+  knowledgeArticle KnowledgeArticle @relation(fields: [knowledgeArticleId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([knowledgeArticleId])
+  @@index([vectorStoreId])
+  @@map("embeddings")
+}
+
+model AIFeedback {
+  id        String       @id @default(uuid()) @db.Uuid
+  userId    String       @db.Uuid
+  messageId String?      @db.Uuid
+  feedback  FeedbackType
+  comment   String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("ai_feedback")
+}
+
+// AI Analytics — every AI decision is logged for audit/explainability, never raw LLM output
+model RecommendationLog {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String   @db.Uuid
+  inputSnapshot Json // sanitized inputs used for generation (no raw prompts/PHI leakage)
+  outputSnapshot Json // final formatted output shown to user
+  safetyEnginePassed Boolean
+  ruleEnginePassed   Boolean
+  validationPassed   Boolean
+  latencyMs    Int?
+  modelProvider AIProvider?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@map("recommendation_logs")
+}
+
+model AIUsage {
+  id            String      @id @default(uuid()) @db.Uuid
+  userId        String?     @db.Uuid
+  provider      AIProvider
+  operation     String // e.g. "meal_recommendation", "ocr_extraction", "chat"
+  promptTokens  Int?
+  completionTokens Int?
+  costUsd       Float?
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([operation])
+  @@map("ai_usage")
+}
+
+model ModelConfiguration {
+  id           String     @id @default(uuid()) @db.Uuid
+  provider     AIProvider
+  modelName    String
+  purpose      String // e.g. "chat", "embedding", "ocr"
+  isDefault    Boolean    @default(false)
+  temperature  Float?     @default(0.3)
+  maxTokens    Int?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@unique([provider, modelName, purpose])
+  @@map("model_configurations")
+}
+
+// ============================================================
+// ADMINISTRATION DOMAIN — Sec. 44
+// Owner: Admin Module
+// Responsibilities: Administration, Monitoring, Analytics
+// ============================================================
+
+model Admin {
+  id     String   @id @default(uuid()) @db.Uuid
+  userId String   @unique @db.Uuid
+  title  String? // e.g. "Support Lead"
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@map("admins")
+}
+
+// Sec. 63 Audit Logging — old value, new value, timestamp, user, module
+model AuditLog {
+  id        String   @id @default(uuid()) @db.Uuid
+  module    String
+  entityName String
+  entityId  String   @db.Uuid
+  action    String // CREATE | UPDATE | DELETE | SOFT_DELETE
+  oldValue  Json?
+  newValue  Json?
+  performedBy String? @db.Uuid
+  reason    String?
+
+  createdAt DateTime @default(now())
+
+  @@index([entityName, entityId])
+  @@index([performedBy])
+  @@map("audit_logs")
+}
+
+model SystemSetting {
+  id    String @id @default(uuid()) @db.Uuid
+  key   String @unique
+  value Json
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("system_settings")
+}
+
+model FeatureFlag {
+  id         String            @id @default(uuid()) @db.Uuid
+  key        String            @unique
+  status     FeatureFlagStatus @default(DISABLED)
+  rolloutPct Int?              @default(0)
+  description String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("feature_flags")
+}
+
+model PermissionLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @db.Uuid
+  permissionCode String
+  granted    Boolean
+  performedBy String? @db.Uuid
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("permission_logs")
+}
+
+model ErrorLog {
+  id        String   @id @default(uuid()) @db.Uuid
+  service   String // api | ai | ocr | queue | database
+  message   String   @db.Text
+  stackTrace String? @db.Text
+  severity  Severity @default(MEDIUM)
+  resolved  Boolean  @default(false)
+
+  createdAt DateTime @default(now())
+
+  @@index([service, createdAt])
+  @@index([severity])
+  @@map("error_logs")
+}
+
+model Analytics {
+  id       String @id @default(uuid()) @db.Uuid
+  metric   String
+  value    Float
+  dimensions Json?
+  recordedAt DateTime @default(now())
+
+  createdAt DateTime @default(now())
+
+  @@index([metric, recordedAt])
+  @@map("analytics")
+}
+
+model NotificationQueue {
+  id        String              @id @default(uuid()) @db.Uuid
+  userId    String              @db.Uuid
+  channel   NotificationChannel
+  title     String
+  body      String
+  status    NotificationStatus  @default(QUEUED)
+  scheduledFor DateTime?
+  sentAt    DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, status])
+  @@map("notification_queue")
+}
+
+model Announcement {
+  id        String        @id @default(uuid()) @db.Uuid
+  title     String
+  body      String        @db.Text
+  status    ContentStatus @default(DRAFT)
+  publishAt DateTime?
+  expireAt  DateTime?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@map("announcements")
+}
+
+model SupportTicket {
+  id       String               @id @default(uuid()) @db.Uuid
+  userId   String               @db.Uuid
+  subject  String
+  description String            @db.Text
+  status   SupportTicketStatus  @default(OPEN)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, status])
+  @@map("support_tickets")
+}
+
+// ============================================================
+// MASTER / LOOKUP TABLES — Sec. 49
+// Seeded during installation (Sec. 27/65). Never business data, never duplicated.
+// ============================================================
+
+model Country {
+  id   String @id @default(uuid()) @db.Uuid
+  name String @unique
+  isoCode String @unique // ISO 3166-1 alpha-2
+
+  states State[]
+  userProfiles UserProfile[]
+  addresses Address[]
+  regionalFoods RegionalFood[]
+
+  createdAt DateTime @default(now())
+
+  @@map("countries")
+}
+
+model State {
+  id        String  @id @default(uuid()) @db.Uuid
+  countryId String  @db.Uuid
+  name      String
+
+  country Country @relation(fields: [countryId], references: [id], onDelete: Restrict)
+  cities  City[]
+  userProfiles UserProfile[]
+  addresses Address[]
+
+  createdAt DateTime @default(now())
+
+  @@unique([countryId, name])
+  @@map("states")
+}
+
+model City {
+  id      String @id @default(uuid()) @db.Uuid
+  stateId String @db.Uuid
+  name    String
+
+  state State @relation(fields: [stateId], references: [id], onDelete: Restrict)
+  userProfiles UserProfile[]
+  addresses Address[]
+  stores Store[]
+  healthyRestaurants HealthyRestaurant[]
+
+  createdAt DateTime @default(now())
+
+  @@unique([stateId, name])
+  @@map("cities")
+}
+
+model Language {
+  id     String @id @default(uuid()) @db.Uuid
+  name   String @unique
+  code   String @unique // ISO 639-1
+
+  primaryFor   LanguagePreference[] @relation("PrimaryLanguage")
+  secondaryFor LanguagePreference[] @relation("SecondaryLanguage")
+
+  createdAt DateTime @default(now())
+
+  @@map("languages")
+}
+
+model Religion {
+  id   String @id @default(uuid()) @db.Uuid
+  name String @unique
+
+  userProfiles UserProfile[]
+
+  createdAt DateTime @default(now())
+
+  @@map("religions")
+}
+
+model SubscriptionPlan {
+  id            String               @id @default(uuid()) @db.Uuid
+  type          SubscriptionPlanType @unique
+  name          String
+  priceUsd      Float
+  billingPeriod String // monthly | yearly | lifetime
+  features      Json?
+
+  subscriptions Subscription[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("subscription_plans")
+}

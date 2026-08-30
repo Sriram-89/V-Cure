@@ -1,0 +1,347 @@
+// V-Cure Core Data Model
+// Module: Foundation (Auth, User, Health Profile, Medical History)
+// Extend this file for future modules — never redefine existing models.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// ENUMS
+// ---------------------------------------------------------------------------
+
+enum Role {
+  USER
+  DOCTOR
+  DIETITIAN
+  ADMIN
+  CORPORATE_ADMIN
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+  PREFER_NOT_TO_SAY
+}
+
+enum ActivityLevel {
+  SEDENTARY
+  LIGHT
+  MODERATE
+  ACTIVE
+  VERY_ACTIVE
+}
+
+enum SmokingStatus {
+  NEVER
+  FORMER
+  CURRENT
+}
+
+enum AlcoholStatus {
+  NEVER
+  OCCASIONAL
+  REGULAR
+  FORMER
+}
+
+enum SleepQuality {
+  POOR
+  FAIR
+  GOOD
+  EXCELLENT
+}
+
+enum StressLevel {
+  LOW
+  MODERATE
+  HIGH
+  SEVERE
+}
+
+enum SubscriptionTier {
+  FREE
+  PREMIUM
+  CORPORATE
+}
+
+enum AllergySeverity {
+  MILD
+  MODERATE
+  SEVERE
+  LIFE_THREATENING
+}
+
+// ---------------------------------------------------------------------------
+// AUTH & USER
+// ---------------------------------------------------------------------------
+
+model User {
+  id                String   @id @default(cuid())
+  email             String   @unique
+  firebaseUid       String   @unique
+  role              Role     @default(USER)
+  isEmailVerified   Boolean  @default(false)
+  isActive          Boolean  @default(true)
+  subscriptionTier  SubscriptionTier @default(FREE)
+
+  passwordHash      String?  // only for refresh-token rotation record fallback; primary auth is Firebase
+  refreshTokens     RefreshToken[]
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  deletedAt         DateTime? // soft delete
+
+  profile           UserProfile?
+  healthProfile     HealthProfile?
+  lifestyleAssessment LifestyleAssessment?
+  medicalConditions MedicalCondition[]
+  medicines         Medicine[]
+  allergies         Allergy[]
+  familyHistory     FamilyHistoryEntry[]
+
+  @@index([email])
+  @@index([firebaseUid])
+  @@map("users")
+}
+
+model RefreshToken {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash   String   @unique
+  isRevoked   Boolean  @default(false)
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+  replacedBy  String?
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+model UserProfile {
+  id            String    @id @default(cuid())
+  userId        String    @unique
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  fullName      String
+  dateOfBirth   DateTime
+  gender        Gender
+  phoneNumber   String?
+  region        String?   // for regional food recommendations
+  city          String?
+  country       String    @default("India")
+  language      String    @default("en") // en, hi, te, etc.
+  avatarUrl     String?
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+
+  history       UserProfileHistory[]
+
+  @@map("user_profiles")
+}
+
+// Audit/revision trail: snapshot of the PREVIOUS state is written every time
+// a UserProfile is updated, so past values can be inspected or restored.
+model UserProfileHistory {
+  id            String   @id @default(cuid())
+  userProfileId String
+  userProfile   UserProfile @relation(fields: [userProfileId], references: [id], onDelete: Cascade)
+
+  fullName      String
+  dateOfBirth   DateTime
+  gender        Gender
+  phoneNumber   String?
+  region        String?
+  city          String?
+  country       String
+  language      String
+  avatarUrl     String?
+
+  recordedAt    DateTime @default(now())
+
+  @@index([userProfileId, recordedAt])
+  @@map("user_profile_history")
+}
+
+// ---------------------------------------------------------------------------
+// HEALTH PROFILE
+// ---------------------------------------------------------------------------
+
+model HealthProfile {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  heightCm          Float
+  weightKg          Float
+  waistCm           Float?
+  bmi               Float    // computed at write-time, stored for query performance
+
+  occupation        String?
+  activityLevel     ActivityLevel @default(MODERATE)
+
+  budgetPerDayINR   Int?     // food budget constraint
+  healthGoals       String[] // e.g. ["weight_loss", "diabetes_control"]
+
+  favoriteFoods     String[]
+  dislikedFoods     String[]
+  foodPreference    String?  // vegetarian, non-vegetarian, vegan, eggetarian, jain
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  deletedAt         DateTime?
+
+  history           HealthProfileHistory[]
+
+  @@map("health_profiles")
+}
+
+// Revision history so BMI/weight trends can be charted over time
+model HealthProfileHistory {
+  id              String   @id @default(cuid())
+  healthProfileId String
+  healthProfile   HealthProfile @relation(fields: [healthProfileId], references: [id], onDelete: Cascade)
+
+  heightCm        Float
+  weightKg        Float
+  waistCm         Float?
+  bmi             Float
+
+  recordedAt      DateTime @default(now())
+
+  @@index([healthProfileId, recordedAt])
+  @@map("health_profile_history")
+}
+
+model LifestyleAssessment {
+  id                  String   @id @default(cuid())
+  userId              String   @unique
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  workingHoursPerDay  Float?
+  sleepHoursAvg       Float?
+  sleepQuality        SleepQuality?
+  stressLevel         StressLevel?
+  waterIntakeLitersAvg Float?
+  smokingStatus       SmokingStatus @default(NEVER)
+  alcoholStatus       AlcoholStatus @default(NEVER)
+  exerciseFrequencyPerWeek Int?
+  mealTimingNotes     String?
+
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  deletedAt           DateTime?
+
+  history             LifestyleAssessmentHistory[]
+
+  @@map("lifestyle_assessments")
+}
+
+// Trend trail: a snapshot of the RESULTING state is appended every time the
+// assessment is created/updated, so sleep/stress/water trends can be charted.
+model LifestyleAssessmentHistory {
+  id                        String   @id @default(cuid())
+  lifestyleAssessmentId     String
+  lifestyleAssessment       LifestyleAssessment @relation(fields: [lifestyleAssessmentId], references: [id], onDelete: Cascade)
+
+  workingHoursPerDay        Float?
+  sleepHoursAvg             Float?
+  sleepQuality              SleepQuality?
+  stressLevel               StressLevel?
+  waterIntakeLitersAvg      Float?
+  smokingStatus             SmokingStatus
+  alcoholStatus             AlcoholStatus
+  exerciseFrequencyPerWeek  Int?
+  mealTimingNotes           String?
+
+  recordedAt                DateTime @default(now())
+
+  @@index([lifestyleAssessmentId, recordedAt])
+  @@map("lifestyle_assessment_history")
+}
+
+// ---------------------------------------------------------------------------
+// MEDICAL HISTORY
+// ---------------------------------------------------------------------------
+
+model MedicalCondition {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name            String   // e.g. "Type 2 Diabetes"
+  diagnosedAt     DateTime?
+  isActive        Boolean  @default(true)
+  notes           String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  deletedAt       DateTime?
+
+  @@index([userId])
+  @@map("medical_conditions")
+}
+
+model Medicine {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name            String
+  dosage          String?
+  frequency       String?  // e.g. "twice daily"
+  prescribedFor   String?  // linked condition name (loose reference by design)
+  startedAt       DateTime?
+  isActive        Boolean  @default(true)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  deletedAt       DateTime?
+
+  @@index([userId])
+  @@map("medicines")
+}
+
+model Allergy {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  allergen        String   // free text, allows custom input per spec
+  severity        AllergySeverity @default(MODERATE)
+  reaction        String?
+  isActive        Boolean  @default(true)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  deletedAt       DateTime?
+
+  @@index([userId])
+  @@map("allergies")
+}
+
+model FamilyHistoryEntry {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  relation        String   // e.g. "father", "mother", "sibling"
+  condition       String   // e.g. "Hypertension"
+  notes           String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  deletedAt       DateTime?
+
+  @@index([userId])
+  @@map("family_history_entries")
+}
