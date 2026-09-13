@@ -105,10 +105,38 @@ model User {
   medicines         Medicine[]
   allergies         Allergy[]
   familyHistory     FamilyHistoryEntry[]
+  medicalReports    MedicalReport[]
 
   @@index([email])
   @@index([firebaseUid])
   @@map("users")
+}
+
+model MedicalReport {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  title           String
+  category        String   // BLOOD_TEST, HBA1C, PRESCRIPTION, INSURANCE, SCAN, HOSPITAL, OTHER
+  uploadDate      DateTime @default(now())
+  reportDate      DateTime?
+  hospitalLabName String?
+  ocrStatus       String   @default("COMPLETED") // COMPLETED, MANUAL_REVIEW_REQUIRED, FAILED
+  storagePath     String   // medical-reports/{userId}/{reportId}/{filename}
+  storageUrl      String?  // Signed URL or direct retrieval endpoint
+  originalFileName String
+  fileType        String   // pdf, jpg, jpeg, png
+  fileSize        Int
+  extractedBiomarkers Json?
+  isConfirmed     Boolean  @default(false)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  deletedAt       DateTime?
+
+  @@index([userId])
+  @@map("medical_reports")
 }
 
 model RefreshToken {
