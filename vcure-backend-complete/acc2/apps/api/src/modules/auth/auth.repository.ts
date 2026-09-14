@@ -34,7 +34,7 @@ export class AuthRepository extends BaseRepository {
   markOnboardingCompleted(userId: string, tx?: PrismaTx): Promise<User> {
     return this.db(tx).user.update({
       where: { id: userId },
-      data: { onboardingCompleted: true },
+      data: { onboardingComplete: true },
     });
   }
 

@@ -8,6 +8,7 @@ import { useDashboardSummary } from "@/hooks/use-dashboard";
 import { useOnboardingStore } from "@/store/onboarding-store";
 import { useMealPlannerStore } from "@/store/meal-planner-store";
 import { useAuthStore } from "@/store/auth-store";
+import { useTranslation } from "@/hooks/use-translation";
 import {
   getSafeMealsForUser,
   ALL_CATALOG_MEALS,
@@ -27,6 +28,7 @@ export default function DashboardPage() {
   const clearSession = useAuthStore((state) => state.clearSession);
   const [waterCount, setWaterCount] = useState(0);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { t } = useTranslation();
 
   const rawUserName = draft.personalInfo?.fullName
     ? draft.personalInfo.fullName.split(" ")[0]
@@ -94,7 +96,7 @@ export default function DashboardPage() {
 
         {/* Greeting Row Below Top Bar */}
         <div className="mt-4">
-          <p className="text-xs font-medium text-emerald-200">Hello,</p>
+          <p className="text-xs font-medium text-emerald-200">{t.welcomeBack},</p>
           <h1 className="text-2xl font-extrabold text-white tracking-tight mt-0.5">
             {userName}
           </h1>
@@ -106,12 +108,12 @@ export default function DashboardPage() {
             <div className="text-center">
               <span className="text-3xl font-black tracking-tight text-white">{healthScore}</span>
               <p className="text-[9px] font-extrabold text-emerald-200 uppercase tracking-wider mt-0.5">
-                Health Score
+                {t.healthScoreLabel}
               </p>
             </div>
           </div>
           <p className="mt-2 text-[11px] font-medium text-emerald-100/80 tracking-wide">
-            Non-diagnostic wellness score
+            {t.healthScoreSubtitle}
           </p>
         </div>
       </div>
@@ -134,7 +136,7 @@ export default function DashboardPage() {
 
               <div className="space-y-1">
                 <p className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400 px-2 mb-2">
-                  Application Navigation
+                  {t.appName} Navigation
                 </p>
                 <Link
                   href="/dashboard"
@@ -142,7 +144,7 @@ export default function DashboardPage() {
                   className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-bold text-emerald-700 bg-emerald-50"
                 >
                   <BarChart3 className="h-4 w-4" />
-                  Dashboard
+                  {t.navDashboard}
                 </Link>
                 <Link
                   href="/meals"
@@ -150,7 +152,7 @@ export default function DashboardPage() {
                   className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-bold text-gray-700 hover:bg-gray-100"
                 >
                   <UtensilsCrossed className="h-4 w-4 text-emerald-600" />
-                  Today's Meals
+                  {t.todaysMealPlanTitle}
                 </Link>
                 <Link
                   href="/ai"
@@ -158,7 +160,7 @@ export default function DashboardPage() {
                   className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-bold text-gray-700 hover:bg-gray-100"
                 >
                   <MessageCircle className="h-4 w-4 text-emerald-600" />
-                  AI Coach
+                  {t.navCoach}
                 </Link>
                 <Link
                   href="/education"
@@ -166,7 +168,7 @@ export default function DashboardPage() {
                   className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-bold text-gray-700 hover:bg-gray-100"
                 >
                   <BookOpen className="h-4 w-4 text-emerald-600" />
-                  Education Hub
+                  {t.educationTitle}
                 </Link>
                 <Link
                   href="/shopping"
@@ -174,7 +176,7 @@ export default function DashboardPage() {
                   className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-bold text-gray-700 hover:bg-gray-100"
                 >
                   <ShoppingBag className="h-4 w-4 text-emerald-600" />
-                  Grocery Shopping
+                  {t.groceryListTitle}
                 </Link>
                 <Link
                   href="/progress"
@@ -182,7 +184,7 @@ export default function DashboardPage() {
                   className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-bold text-gray-700 hover:bg-gray-100"
                 >
                   <BarChart3 className="h-4 w-4 text-emerald-600" />
-                  Progress & Weight
+                  {t.progressTitle}
                 </Link>
                 <Link
                   href="/reports"
@@ -190,7 +192,7 @@ export default function DashboardPage() {
                   className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-bold text-gray-700 hover:bg-gray-100"
                 >
                   <FileText className="h-4 w-4 text-emerald-600" />
-                  Medical Reports
+                  {t.medicalReports}
                 </Link>
                 <Link
                   href="/profile"
@@ -198,7 +200,7 @@ export default function DashboardPage() {
                   className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-bold text-gray-700 hover:bg-gray-100"
                 >
                   <UserIcon className="h-4 w-4 text-emerald-600" />
-                  Profile & Health Data
+                  {t.profileTitle}
                 </Link>
                 <Link
                   href="/settings"
@@ -206,7 +208,7 @@ export default function DashboardPage() {
                   className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-bold text-gray-700 hover:bg-gray-100"
                 >
                   <SettingsIcon className="h-4 w-4 text-emerald-600" />
-                  Settings
+                  {t.navSettings}
                 </Link>
               </div>
             </div>
@@ -221,7 +223,7 @@ export default function DashboardPage() {
                 className="w-full flex items-center justify-center gap-2 rounded-xl bg-red-50 py-2.5 text-xs font-bold text-red-600 hover:bg-red-100 transition-all"
               >
                 <LogOut className="h-4 w-4" />
-                Sign Out
+                {t.logoutButton}
               </button>
               <p className="text-[10px] font-semibold text-gray-400 text-center">V-Cure Healthcare v1.0</p>
             </div>
@@ -243,7 +245,7 @@ export default function DashboardPage() {
               <span className="text-2xl font-black text-gray-900">{waterCount}</span>
               <span className="text-xs font-bold text-gray-400">/8</span>
             </div>
-            <p className="text-[11px] font-medium text-gray-500 mt-0.5">Water (glasses)</p>
+            <p className="text-[11px] font-medium text-gray-500 mt-0.5">{t.waterLabel}</p>
             <div className="mt-3 flex items-center gap-2">
               <button
                 type="button"
@@ -270,7 +272,7 @@ export default function DashboardPage() {
             <div className="mt-2">
               <span className="text-2xl font-black text-gray-900">1230</span>
             </div>
-            <p className="text-[11px] font-medium text-gray-500 mt-0.5">Calories today</p>
+            <p className="text-[11px] font-medium text-gray-500 mt-0.5">{t.caloriesLabel}</p>
             <div className="mt-3 flex flex-wrap gap-1">
               <span className="rounded-md bg-gray-100 px-1.5 py-0.5 text-[10px] font-bold text-gray-600">P 68g</span>
               <span className="rounded-md bg-gray-100 px-1.5 py-0.5 text-[10px] font-bold text-gray-600">C 128g</span>
@@ -285,25 +287,25 @@ export default function DashboardPage() {
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-xs">
               <MessageCircle className="h-5 w-5" />
             </div>
-            <span className="mt-2 text-[11px] font-bold text-gray-800">Ask AI</span>
+            <span className="mt-2 text-[11px] font-bold text-gray-800">{t.actionAskCoach}</span>
           </Link>
           <Link href="/education" className="flex flex-col items-center justify-center rounded-2xl bg-emerald-50/80 p-3.5 text-center shadow-xs border border-emerald-100 hover:bg-emerald-100/80 transition-all">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-xs">
               <BookOpen className="h-5 w-5" />
             </div>
-            <span className="mt-2 text-[11px] font-bold text-gray-800">Learn</span>
+            <span className="mt-2 text-[11px] font-bold text-gray-800">{t.navEducation}</span>
           </Link>
           <Link href="/shopping" className="flex flex-col items-center justify-center rounded-2xl bg-emerald-50/80 p-3.5 text-center shadow-xs border border-emerald-100 hover:bg-emerald-100/80 transition-all">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-xs">
               <ShoppingBag className="h-5 w-5" />
             </div>
-            <span className="mt-2 text-[11px] font-bold text-gray-800">Grocery</span>
+            <span className="mt-2 text-[11px] font-bold text-gray-800">{t.groceryListTitle}</span>
           </Link>
           <Link href="/progress" className="flex flex-col items-center justify-center rounded-2xl bg-emerald-50/80 p-3.5 text-center shadow-xs border border-emerald-100 hover:bg-emerald-100/80 transition-all">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-xs">
               <BarChart3 className="h-5 w-5" />
             </div>
-            <span className="mt-2 text-[11px] font-bold text-gray-800">Progress</span>
+            <span className="mt-2 text-[11px] font-bold text-gray-800">{t.navProgress}</span>
           </Link>
         </div>
 
@@ -312,10 +314,10 @@ export default function DashboardPage() {
           <div className="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-3 flex items-center justify-between text-xs">
             <div className="flex items-center gap-2 text-emerald-900 font-bold">
               <ShieldCheck className="h-4 w-4 text-emerald-600" />
-              <span>Personalized Plan: {draft.diabetesCategory.category.replace("_", " ")}</span>
+              <span>{t.onboardingTitle}: {draft.diabetesCategory.category.replace("_", " ")}</span>
             </div>
             <Link href="/onboarding" className="text-[11px] font-bold text-emerald-700 hover:underline">
-              Edit
+              {t.edit}
             </Link>
           </div>
         ) : null}
@@ -323,9 +325,9 @@ export default function DashboardPage() {
         {/* Today's Meals Section */}
         <div className="space-y-3 pt-2">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold text-gray-900">Today's meals</h2>
+            <h2 className="text-xl font-bold text-gray-900">{t.todaysMealPlanTitle}</h2>
             <Link href={ROUTES.MEALS} className="text-xs font-bold text-emerald-600 hover:underline">
-              See plan & swap
+              {t.selectAlternative}
             </Link>
           </div>
 
@@ -366,4 +368,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
 

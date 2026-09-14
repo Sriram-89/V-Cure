@@ -43,8 +43,8 @@ export class AuthService {
       try {
         decoded = await this.firebaseApp.auth().verifyIdToken(idToken);
       } catch (error) {
-        this.logger.warn(`Firebase token verification failed: ${error}. Falling back to demo patient.`);
-        decoded = { uid: 'demo-firebase-uid-vcure', email: 'demo@vcure.com', email_verified: true };
+        this.logger.warn(`Firebase token verification failed: ${(error as Error).message}`);
+        throw new UnauthorizedException(`Invalid or expired Firebase ID token: ${(error as Error).message}`);
       }
     }
 
@@ -62,15 +62,16 @@ export class AuthService {
         { emailVerified: !!email_verified },
       );
     } catch (dbErr) {
-      this.logger.warn(`DB unavailable, using memory user: ${(dbErr as Error).message}`);
+      const fallbackId = crypto.randomUUID();
+      this.logger.warn(`DB unavailable, using memory user ${fallbackId}: ${(dbErr as Error).message}`);
       user = {
-        id: 'demo-user-id-12345',
+        id: fallbackId,
         firebaseUid: uid,
         email: email ?? 'demo@vcure.com',
         emailVerified: true,
         status: 'ACTIVE',
-        onboardingComplete: true,
-        profile: { fullName: 'Demo Patient' },
+        onboardingComplete: false,
+        profile: { fullName: '' },
         userRoles: [{ role: { name: 'USER' } }],
       };
     }
@@ -119,10 +120,11 @@ export class AuthService {
         }) as any;
       }
     } catch (dbErr) {
-      this.logger.warn(`DB unavailable during register, using memory user: ${(dbErr as Error).message}`);
+      const fallbackId = crypto.randomUUID();
+      this.logger.warn(`DB unavailable during register, using memory user ${fallbackId}: ${(dbErr as Error).message}`);
       user = {
-        id: 'demo-user-id-' + Date.now(),
-        firebaseUid: 'uid-demo-' + Date.now(),
+        id: fallbackId,
+        firebaseUid: `uid-demo-${fallbackId}`,
         email,
         emailVerified: true,
         status: 'ACTIVE',
@@ -150,22 +152,28 @@ export class AuthService {
           userRoles: { include: { role: { select: { name: true } } } },
         },
       });
+
+      if (!user) {
+        // Auto-provision user on email login if first time
+        return this.registerWithEmail({
+          fullName: email.split('@')[0] || 'V-Cure Patient',
+          email,
+          password: dto.password,
+        });
+      }
     } catch (dbErr) {
-      this.logger.warn(`DB unavailable during login, using memory user: ${(dbErr as Error).message}`);
+      const fallbackId = crypto.randomUUID();
+      this.logger.warn(`DB unavailable during login, using memory user ${fallbackId}: ${(dbErr as Error).message}`);
       user = {
-        id: 'demo-user-id-12345',
-        firebaseUid: 'demo-firebase-uid-vcure',
+        id: fallbackId,
+        firebaseUid: `uid-demo-${fallbackId}`,
         email: email,
         emailVerified: true,
         status: 'ACTIVE',
         onboardingComplete: true,
-        profile: { fullName: 'Demo Patient' },
+        profile: { fullName: email.split('@')[0] || 'V-Cure Patient' },
         userRoles: [{ role: { name: 'USER' } }],
       };
-    }
-
-    if (!user) {
-      return this.loginWithFirebase('demo-token');
     }
 
     const tokens = await this.issueTokens(user.id, user.email, (user.userRoles ?? []).map((ur: { role: { name: string } }) => ur.role.name));
@@ -197,7 +205,7 @@ export class AuthService {
       role: roles.length === 1 ? roles[0] : null,
       // F-3: no source defines how to select a current subscription.
       subscriptionTier: null,
-      onboardingCompleted: true,
+      onboardingCompleted: user.onboardingComplete ?? false,
     };
   }
 

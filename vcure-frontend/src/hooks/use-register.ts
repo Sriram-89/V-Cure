@@ -12,23 +12,8 @@ export function useRegister() {
 
   return useMutation({
     mutationFn: async (payload: RegisterRequestDto) => {
-      try {
-        const res = await authService.register(payload);
-        return res;
-      } catch (err: any) {
-        return {
-          user: {
-            id: `user-${Date.now()}`,
-            email: payload.email,
-            fullName: payload.fullName,
-            role: "USER" as const
-          },
-          tokens: {
-            accessToken: `reg-access-token-${Date.now()}`,
-            refreshToken: `reg-refresh-token-${Date.now()}`
-          }
-        };
-      }
+      const res = await authService.register(payload);
+      return res;
     },
     onSuccess: (res: any) => {
       const data = res?.data ?? res;

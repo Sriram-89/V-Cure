@@ -2,18 +2,20 @@
  * V-Cure Capacitor Production Configuration
  * 
  * Architecture:
- * Android APK Wrapper -> V-Cure Nutrition Web Frontend (server.url: http://192.168.31.254:3000)
+ * Android APK Wrapper -> V-Cure Nutrition Web Frontend (server.url: https://v-cure-health.vercel.app)
  *                      -> Render NestJS API (NEXT_PUBLIC_API_BASE_URL: https://vcure-backend.onrender.com/api/v1)
  *                      -> Supabase PostgreSQL + Storage
  */
 
-const config = {
+import type { CapacitorConfig } from '@capacitor/cli';
+
+const config: CapacitorConfig = {
   appId: 'com.vcure.app',
   appName: 'V-Cure',
   webDir: 'out',
   server: {
-    url: 'http://192.168.31.254:3000',
-    cleartext: true
+    url: process.env.CAPACITOR_SERVER_URL || 'https://v-cure-health.vercel.app',
+    cleartext: false
   },
   plugins: {
     SplashScreen: {
@@ -31,5 +33,6 @@ const config = {
 };
 
 export default config;
+
 
 

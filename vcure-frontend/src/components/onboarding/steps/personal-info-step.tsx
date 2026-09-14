@@ -7,6 +7,7 @@ import { SelectField } from "@/components/ui/select-field";
 import { Button } from "@/components/ui/button";
 import { personalInfoSchema, type PersonalInfoFormValues } from "@/lib/validation/onboarding";
 import { useOnboardingStore } from "@/store/onboarding-store";
+import { useTranslation } from "@/hooks/use-translation";
 
 const GENDER_OPTIONS = [
   { value: "MALE", label: "Male" },
@@ -19,6 +20,7 @@ export function PersonalInfoStep() {
   const draft = useOnboardingStore((state) => state.draft.personalInfo);
   const updatePersonalInfo = useOnboardingStore((state) => state.updatePersonalInfo);
   const goNext = useOnboardingStore((state) => state.goNext);
+  const { t } = useTranslation();
 
   const {
     register,
@@ -43,7 +45,7 @@ export function PersonalInfoStep() {
   return (
     <form className="flex flex-col gap-5" onSubmit={handleSubmit(onSubmit)} noValidate>
       <InputField
-        label="Full Name"
+        label={t.fullNameLabel}
         type="text"
         placeholder="Enter your name"
         error={errors.fullName?.message}
@@ -52,7 +54,7 @@ export function PersonalInfoStep() {
 
       <div className="grid grid-cols-2 gap-4">
         <InputField
-          label="Age"
+          label={t.ageLabel}
           type="number"
           placeholder="e.g. 32"
           error={errors.age?.message}
@@ -60,7 +62,7 @@ export function PersonalInfoStep() {
         />
 
         <SelectField
-          label="Gender"
+          label={t.genderLabel}
           options={GENDER_OPTIONS}
           error={errors.gender?.message}
           {...register("gender")}
@@ -69,7 +71,7 @@ export function PersonalInfoStep() {
 
       <div className="grid grid-cols-2 gap-4">
         <InputField
-          label="Height (cm)"
+          label={t.heightLabel}
           type="number"
           placeholder="e.g. 170"
           error={errors.heightCm?.message}
@@ -77,7 +79,7 @@ export function PersonalInfoStep() {
         />
 
         <InputField
-          label="Weight (kg)"
+          label={t.weightLabel}
           type="number"
           placeholder="e.g. 70"
           error={errors.weightKg?.message}
@@ -91,9 +93,10 @@ export function PersonalInfoStep() {
           onClick={handleSubmit(onSubmit)}
           className="rounded-2xl bg-emerald-600 px-6 py-3 font-bold text-white hover:bg-emerald-700"
         >
-          Continue →
+          {t.next} →
         </Button>
       </div>
     </form>
   );
 }
+

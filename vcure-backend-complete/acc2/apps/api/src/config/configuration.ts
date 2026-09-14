@@ -21,7 +21,7 @@ export interface AppConfig {
 export default (): AppConfig => ({
   port: parseInt(process.env.PORT ?? '4000', 10),
   nodeEnv: process.env.NODE_ENV ?? 'development',
-  corsOrigin: process.env.CORS_ORIGIN ?? 'http://localhost:3000',
+  corsOrigin: process.env.CORS_ORIGIN ?? '*',
   database: {
     url: process.env.DATABASE_URL ?? '',
   },

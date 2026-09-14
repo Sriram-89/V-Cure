@@ -11,10 +11,12 @@ import { useRegister, getRegisterErrorMessage } from "@/hooks/use-register";
 import { useLogin } from "@/hooks/use-login";
 import { signInWithGoogleIdToken } from "@/lib/firebase-auth";
 import { ROUTES } from "@/constants/routes";
+import { useTranslation } from "@/hooks/use-translation";
 
 export function RegisterForm() {
   const [googleError, setGoogleError] = useState<string | null>(null);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const { t } = useTranslation();
 
   const {
     register,
@@ -76,7 +78,7 @@ export function RegisterForm() {
             d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
           />
         </svg>
-        {isGoogleLoading ? "Connecting to Google..." : "Continue with Google"}
+        {isGoogleLoading ? t.loading : t.continueWithGoogle}
       </button>
 
       <div className="relative my-0.5 flex items-center justify-center">
@@ -84,7 +86,7 @@ export function RegisterForm() {
           <div className="w-full border-t border-gray-200" />
         </div>
         <span className="relative bg-white px-3 text-[11px] font-bold uppercase tracking-wider text-gray-400">
-          Or sign up with email
+          {t.orSignUpWithEmail}
         </span>
       </div>
 
@@ -101,7 +103,7 @@ export function RegisterForm() {
 
         <div>
           <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-1.5">
-            NAME
+            {t.fullNameLabel}
           </label>
           <input
             type="text"
@@ -117,7 +119,7 @@ export function RegisterForm() {
 
         <div>
           <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-1.5">
-            EMAIL
+            {t.emailLabel}
           </label>
           <input
             type="email"
@@ -133,7 +135,7 @@ export function RegisterForm() {
 
         <div>
           <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-1.5">
-            PASSWORD
+            {t.passwordLabel}
           </label>
           <input
             type="password"
@@ -149,7 +151,7 @@ export function RegisterForm() {
 
         <div>
           <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-1.5">
-            CONFIRM PASSWORD
+            {t.passwordLabel} ({t.confirm})
           </label>
           <input
             type="password"
@@ -168,16 +170,17 @@ export function RegisterForm() {
           className="mt-2 w-full rounded-2xl bg-emerald-600 py-3.5 text-base font-bold text-white shadow-md hover:bg-emerald-700 transition-all"
           isLoading={registerMutation.isPending}
         >
-          Create Account
+          {t.signUpButton}
         </Button>
 
         <p className="text-center text-xs font-semibold text-emerald-700 mt-2">
           <Link href={ROUTES.LOGIN} className="hover:underline">
-            Already have an account? Log in
+            {t.alreadyHaveAccount}
           </Link>
         </p>
       </form>
     </div>
   );
 }
+
 

@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Sparkles, Lightbulb, ArrowUp } from "lucide-react";
+import { Lightbulb, ArrowUp } from "lucide-react";
 import { Container } from "@/components/ui/container";
 import { VCureSymbolLogo } from "@/components/ui/vcure-logo";
 import { useOnboardingStore } from "@/store/onboarding-store";
-import { useLanguageStore } from "@/store/language-store";
+import { useTranslation } from "@/hooks/use-translation";
 
 const SUGGESTED_PROMPTS_EN = [
   "Best breakfast for diabetes?",
@@ -31,14 +31,13 @@ export default function CoachPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputQuery, setInputQuery] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const { t, language } = useTranslation();
 
   const draft = useOnboardingStore((state) => state.draft);
-  const lang = useLanguageStore((state) => state.language);
-  const isTelugu = lang === "te";
+  const isTelugu = language === "te";
 
   const category = draft.diabetesCategory?.category || "PREDIABETES";
   const userAllergies = draft.allergies?.allergies || [];
-  const userDiet = draft.foodPreferences?.dietType || "VEGETARIAN";
   const regionalCuisine = draft.foodPreferences?.regionalCuisine || "ANDHRA";
 
   const suggestedPrompts = isTelugu ? SUGGESTED_PROMPTS_TE : SUGGESTED_PROMPTS_EN;
@@ -120,10 +119,10 @@ export default function CoachPage() {
             </div>
             <div>
               <h1 className="text-base font-extrabold text-gray-900">
-                {isTelugu ? "వి-క్యూర్ AI కోచ్" : "V-Cure Coach"}
+                {t.coachTitle}
               </h1>
               <p className="text-[11px] font-medium text-gray-400">
-                {isTelugu ? "విద్యాత్మక మార్గదర్శకత్వం — డాక్టర్ సలహా కాదు" : "Educational only — not medical advice"}
+                {t.coachSubtitle}
               </p>
             </div>
           </div>
@@ -189,7 +188,7 @@ export default function CoachPage() {
               {isTyping ? (
                 <div className="flex justify-start">
                   <div className="rounded-2xl bg-white border border-gray-100 p-3 text-xs font-bold text-emerald-600 animate-pulse">
-                    {isTelugu ? "ఆలోచిస్తోంది..." : "V-Cure Coach is thinking..."}
+                    {t.loading}
                   </div>
                 </div>
               ) : null}
@@ -206,7 +205,7 @@ export default function CoachPage() {
             value={inputQuery}
             onChange={(e) => setInputQuery(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSendPrompt(inputQuery)}
-            placeholder={isTelugu ? "ఆహారం, అలవాట్లు, పోషణ గురించి అడగండి..." : "Ask about nutrition, meals, habits..."}
+            placeholder={t.askCoachPlaceholder}
             className="flex-1 rounded-full border border-gray-200 bg-gray-50 px-4 py-3 text-xs font-medium text-gray-900 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-200"
           />
           <button
@@ -221,3 +220,4 @@ export default function CoachPage() {
     </div>
   );
 }
+

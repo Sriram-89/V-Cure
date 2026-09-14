@@ -3,12 +3,14 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Menu, X, LogOut } from "lucide-react";
+import { Menu, X, LogOut, Globe } from "lucide-react";
 import { useAuthStore } from "@/store/auth-store";
 import { authService } from "@/services/auth-service";
 import { Sidebar } from "@/components/layout/sidebar";
 import { NotificationBellPanel } from "@/components/notifications/notification-bell-panel";
 import { ROUTES } from "@/constants/routes";
+import { useTranslation } from "@/hooks/use-translation";
+import type { Language } from "@/constants/translations";
 
 export function TopBar() {
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
@@ -16,6 +18,7 @@ export function TopBar() {
   const clearSession = useAuthStore((state) => state.clearSession);
   const router = useRouter();
   const pathname = usePathname();
+  const { t, language, setLanguage } = useTranslation();
 
   const handleLogout = async () => {
     try {
@@ -40,10 +43,29 @@ export function TopBar() {
       </button>
 
       <span className="text-sm font-medium text-text-secondary">
-        {user ? `Hi, ${user.fullName.split(" ")[0]}` : ""}
+        {user ? `${t.welcomeBack}, ${user.fullName.split(" ")[0] || "User"}` : ""}
       </span>
 
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-3">
+        {/* Language selector dropdown */}
+        <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-800 px-3 py-1.5 rounded-full text-xs font-semibold border border-emerald-200">
+          <Globe className="h-3.5 w-3.5" />
+          <select
+            value={language}
+            onChange={(e) => setLanguage(e.target.value as Language)}
+            className="bg-transparent text-xs font-bold text-emerald-900 focus:outline-none cursor-pointer"
+          >
+            <option value="en">English</option>
+            <option value="te">తెలుగు (Telugu)</option>
+            <option value="ta">தமிழ் (Tamil)</option>
+            <option value="hi">हिन्दी (Hindi)</option>
+            <option value="kn">ಕನ್ನಡ (Kannada)</option>
+            <option value="ml">മലയാളം (Malayalam)</option>
+            <option value="mr">मराठी (Marathi)</option>
+            <option value="bn">বাংলা (Bengali)</option>
+          </select>
+        </div>
+
         <NotificationBellPanel />
         <button
           type="button"
@@ -51,7 +73,7 @@ export function TopBar() {
           className="flex items-center gap-2 px-2 text-sm font-medium text-text-secondary hover:text-text-primary"
         >
           <LogOut className="h-4 w-4" aria-hidden="true" />
-          Log out
+          {t.logoutButton}
         </button>
       </div>
 
@@ -63,3 +85,4 @@ export function TopBar() {
     </header>
   );
 }
+
