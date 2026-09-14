@@ -17,9 +17,7 @@
     "noImplicitAny": false,
     "noEmitOnError": false,
     "paths": {
-      "@/*": ["src/*"],
-      "vcure-backend": ["../../../acc3/src/index.ts"],
-      "vcure-backend/*": ["../../../acc3/src/*"]
+      "@/*": ["src/*"]
     }
   },
   "exclude": ["node_modules", "dist", "**/*.spec.ts"]

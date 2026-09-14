@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "build": "npx prisma generate --schema=../../../acc3/prisma/schema.prisma && (nest build || node -e \"process.exit(0)\")",
+    "build": "npm --prefix ../../../acc3 run build && npx prisma generate --schema=../../../acc3/prisma/schema.prisma && nest build",
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:prod": "node dist/main.js",

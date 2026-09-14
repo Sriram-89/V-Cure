@@ -3,6 +3,8 @@
   "version": "1.0.0",
   "description": "V-Cure — AI Powered Preventive Healthcare Platform. Database & AI Layer.",
   "private": true,
+  "main": "dist/src/index.js",
+  "types": "dist/src/index.d.ts",
   "license": "UNLICENSED",
   "scripts": {
     "prisma:generate": "prisma generate",

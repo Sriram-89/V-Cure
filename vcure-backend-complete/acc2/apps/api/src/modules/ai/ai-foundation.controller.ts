@@ -3,7 +3,7 @@ import {
   SafetyEngineService,
   RecommendationEngineFoundationService,
   ExplainabilityEngineService,
-} from 'c:/Users/SRIRAMREDDY/OneDrive/Desktop/v-Cure-Application/vcure-backend-complete/acc3/dist/src';
+} from 'vcure-backend';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Public } from '../auth/decorators/public.decorator';
 import { AuthenticatedUser } from '../auth/types/auth-tokens.type';

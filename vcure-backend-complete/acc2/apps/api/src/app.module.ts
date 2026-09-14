@@ -18,7 +18,7 @@ import { EducationModule } from './modules/education/education.module';
 import { RecipeModule } from './modules/recipe/recipe.module';
 import { TrackingModule } from './modules/tracking/tracking.module';
 import { NutritionModule } from './modules/nutrition/nutrition.module';
-import { AIFoundationModule } from 'c:/Users/SRIRAMREDDY/OneDrive/Desktop/v-Cure-Application/vcure-backend-complete/acc3/dist/src';
+import { AIFoundationModule } from 'vcure-backend';
 import { AiFoundationController } from './modules/ai/ai-foundation.controller';
 
 @Module({
