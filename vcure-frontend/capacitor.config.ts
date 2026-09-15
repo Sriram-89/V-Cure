@@ -3,7 +3,7 @@
  * 
  * Architecture:
  * Android APK Wrapper -> V-Cure Nutrition Web Frontend (server.url: https://v-cure-health.vercel.app)
- *                      -> Render NestJS API (NEXT_PUBLIC_API_BASE_URL: https://vcure-backend.onrender.com/api/v1)
+ *                      -> Render NestJS API (NEXT_PUBLIC_API_BASE_URL: https://v-cure.onrender.com/api/v1)
  *                      -> Supabase PostgreSQL + Storage
  */
 
