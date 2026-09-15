@@ -1,4 +1,5 @@
-import { Controller, Post, Get, Body, UseGuards } from '@nestjs/common';
+import { Controller, Post, Get, Body, UseGuards, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import {
   SafetyEngineService,
   RecommendationEngineFoundationService,
@@ -8,6 +9,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Public } from '../auth/decorators/public.decorator';
 import { AuthenticatedUser } from '../auth/types/auth-tokens.type';
 import { MealType } from '@prisma/client';
+import { AppConfig } from '../../config/configuration';
 
 export const DEMO_USER_ID = '11111111-1111-1111-1111-111111111111';
 export const DEMO_FOOD_PEANUT_BUTTER_ID = '22222222-2222-2222-2222-222222222222';
@@ -21,6 +23,7 @@ export class AiFoundationController {
     private readonly safetyEngine: SafetyEngineService,
     private readonly recommendationEngine: RecommendationEngineFoundationService,
     private readonly explainabilityEngine: ExplainabilityEngineService,
+    private readonly configService: ConfigService<AppConfig>,
   ) {}
 
   @Public()
@@ -96,6 +99,11 @@ export class AiFoundationController {
   @Public()
   @Get('demo-flow')
   async runFullDemoFlow() {
+    const env = this.configService.get('nodeEnv', { infer: true }) || process.env.NODE_ENV;
+    if (env === 'production') {
+      throw new NotFoundException('Endpoint not found');
+    }
+
     // 1. Check unsafe food (Peanut Butter Toast vs Peanut Allergy)
     const unsafeSafetyCheck = await this.safetyEngine.check({
       userId: DEMO_USER_ID,
@@ -129,3 +137,4 @@ export class AiFoundationController {
     };
   }
 }
+
