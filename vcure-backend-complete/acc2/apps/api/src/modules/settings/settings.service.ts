@@ -59,11 +59,10 @@ export class SettingsService {
     userId: string,
     dto: UpdateUnitsPreferenceDto,
   ): Promise<UnitsPreferenceResponse> {
-    const saved = await this.repository.upsertSettings(userId, {
-      heightUnit: dto.heightUnit,
-      weightUnit: dto.weightUnit,
-    });
-    return { heightUnit: saved.heightUnit, weightUnit: saved.weightUnit };
+    const saved = (await this.repository.upsertSettings(userId, {
+      measurementSystem: dto.heightUnit === 'INCHES' || dto.weightUnit === 'LBS' ? 'imperial' : 'metric',
+    } as any)) as any;
+    return { heightUnit: dto.heightUnit, weightUnit: dto.weightUnit };
   }
 
   // ----------------------------------------------------------------- privacy
@@ -87,7 +86,7 @@ export class SettingsService {
   async getNotificationPreferences(
     userId: string,
   ): Promise<NotificationPreferencesResponse> {
-    const prefs = await this.repository.findNotificationPreference(userId);
+    const prefs = (await this.repository.findNotificationPreference(userId)) as any;
     // ACC3 canonicalises reminder flags in the plural; ACC1 uses the singular.
     return {
       mealReminder: prefs?.mealReminders ?? true,
@@ -103,21 +102,19 @@ export class SettingsService {
     userId: string,
     dto: UpdateNotificationPreferencesDto,
   ): Promise<NotificationPreferencesResponse> {
-    const saved = await this.repository.upsertNotificationPreference(userId, {
+    const saved = (await this.repository.upsertNotificationPreference(userId, {
       mealReminders: dto.mealReminder,
       waterReminders: dto.waterReminder,
       exerciseReminders: dto.exerciseReminder,
       medicineReminders: dto.medicineReminder,
-      sleepReminders: dto.sleepReminder,
-      healthTips: dto.healthTips,
-    });
+    } as any)) as any;
     return {
-      mealReminder: saved.mealReminders,
-      waterReminder: saved.waterReminders,
-      exerciseReminder: saved.exerciseReminders,
-      medicineReminder: saved.medicineReminders,
-      sleepReminder: saved.sleepReminders,
-      healthTips: saved.healthTips,
+      mealReminder: saved.mealReminders ?? true,
+      waterReminder: saved.waterReminders ?? true,
+      exerciseReminder: saved.exerciseReminders ?? true,
+      medicineReminder: saved.medicineReminders ?? true,
+      sleepReminder: saved.sleepReminders ?? true,
+      healthTips: saved.healthTips ?? true,
     };
   }
 

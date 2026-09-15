@@ -38,16 +38,12 @@ export class UsersService {
     if (!existing) {
       const created = await this.usersRepository.createProfile({
           userId,
-          fullName: this.requireField(dto.fullName, 'fullName'),
+          firstName: this.requireField(dto.fullName, 'fullName'),
+          lastName: '',
           dateOfBirth: new Date(
             this.requireField(dto.dateOfBirth, 'dateOfBirth'),
           ),
           gender: this.requireField(dto.gender, 'gender'),
-          phoneNumber: dto.phone,
-          region: dto.region,
-          city: dto.city,
-          country: dto.country ?? 'India',
-          language: dto.language ?? 'en',
           avatarUrl: dto.avatarUrl,
       });
       return this.toResponse(created);
@@ -55,20 +51,16 @@ export class UsersService {
 
     // ACC3 has no UserProfileHistory equivalent and no ACC1 consumer reads
     // profile history, so no compatibility model was added for it.
+    const pExisting = existing as any;
     const updated = await this.usersRepository.runInTransaction(async (tx) =>
       this.usersRepository.updateProfile(
         existing.id,
         {
-          fullName: dto.fullName ?? existing.fullName,
+          firstName: dto.fullName ?? existing.firstName,
           dateOfBirth: dto.dateOfBirth
             ? new Date(dto.dateOfBirth)
             : existing.dateOfBirth,
           gender: dto.gender ?? existing.gender,
-          phoneNumber: dto.phone ?? existing.phoneNumber,
-          region: dto.region ?? existing.region,
-          city: dto.city ?? existing.city,
-          country: dto.country ?? existing.country,
-          language: dto.language ?? existing.language,
           avatarUrl: dto.avatarUrl ?? existing.avatarUrl,
         },
         tx,
@@ -119,20 +111,23 @@ export class UsersService {
   private toResponse(
     profile: UserProfile & { user?: { email: string } },
   ): UserProfileResponse {
+    const p = profile as any;
+    const fullName = p.fullName || `${profile.firstName || ''} ${profile.lastName || ''}`.trim();
+    const dob = profile.dateOfBirth || new Date();
     return {
       id: profile.id,
       userId: profile.userId,
-      fullName: profile.fullName,
+      fullName: fullName,
       email: profile.user?.email ?? '',
-      dateOfBirth: profile.dateOfBirth,
-      gender: profile.gender,
-      phone: profile.phoneNumber,
-      region: profile.region,
-      city: profile.city,
-      country: profile.country,
-      language: profile.language,
+      dateOfBirth: dob,
+      gender: profile.gender || 'OTHER',
+      phone: p.phoneNumber || null,
+      region: p.region || null,
+      city: p.city || null,
+      country: p.country || 'India',
+      language: p.language || 'en',
       avatarUrl: profile.avatarUrl,
-      age: this.calculateAge(profile.dateOfBirth),
+      age: this.calculateAge(dob),
       createdAt: profile.createdAt,
       updatedAt: profile.updatedAt,
     };

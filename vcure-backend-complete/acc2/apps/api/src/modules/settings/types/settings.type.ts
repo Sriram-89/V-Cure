@@ -1,4 +1,5 @@
-import { HeightUnit, WeightUnit } from '@prisma/client';
+export type HeightUnit = 'CM' | 'INCHES';
+export type WeightUnit = 'KG' | 'LBS';
 
 /** ACC1 `LanguageSettings`. Backed by UserProfile.language. */
 export interface LanguageSettingsResponse {

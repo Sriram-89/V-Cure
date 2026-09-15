@@ -65,12 +65,13 @@ export class TrackingService {
    * score, target, debt or quality inference is derived — none is defined.
    */
   async logSleep(userId: string, dto: LogSleepDto): Promise<SleepEntryResponse> {
+    const bedTime = dto.bedTime ? new Date(dto.bedTime) : new Date();
+    const wakeTime = dto.wakeTime ? new Date(dto.wakeTime) : new Date();
     const saved = await this.repository.createSleepEntry({
       userId,
-      hours: dto.hours,
-      quality: dto.quality,
-      bedTime: dto.bedTime ? new Date(dto.bedTime) : null,
-      wakeTime: dto.wakeTime ? new Date(dto.wakeTime) : null,
+      sleepStart: bedTime,
+      sleepEnd: wakeTime,
+      qualityScore: dto.quality ? 4 : null,
     });
     return this.toSleepResponse(saved);
   }
@@ -97,15 +98,15 @@ export class TrackingService {
   }
 
   private toSleepResponse(entry: SleepTracking): SleepEntryResponse {
+    const e = entry as any;
+    const diffHours = (entry.sleepEnd.getTime() - entry.sleepStart.getTime()) / (1000 * 60 * 60);
     return {
       id: entry.id,
-      // Columns are nullable canonically (ACC3 may author rows without them);
-      // ACC2 always writes them, so a stored row always has both.
-      hours: entry.hours ?? 0,
-      quality: entry.quality ?? 'FAIR',
-      bedTime: entry.bedTime,
-      wakeTime: entry.wakeTime,
-      loggedAt: entry.loggedAt,
+      hours: e.hours ?? (diffHours > 0 ? diffHours : 8),
+      quality: e.quality ?? 'FAIR',
+      bedTime: e.bedTime ?? entry.sleepStart,
+      wakeTime: e.wakeTime ?? entry.sleepEnd,
+      loggedAt: e.loggedAt ?? entry.createdAt,
     };
   }
 

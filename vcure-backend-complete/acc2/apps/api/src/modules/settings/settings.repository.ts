@@ -33,7 +33,7 @@ export class SettingsRepository extends BaseRepository {
   // --- UserSettings ---
   findSettings(userId: string, tx?: PrismaTx): Promise<UserSettings | null> {
     return this.db(tx).userSettings.findFirst({
-      where: { userId, deletedAt: null },
+      where: { userId },
     });
   }
 
@@ -55,7 +55,7 @@ export class SettingsRepository extends BaseRepository {
     tx?: PrismaTx,
   ): Promise<NotificationPreference | null> {
     return this.db(tx).notificationPreference.findFirst({
-      where: { userId, deletedAt: null },
+      where: { userId },
     });
   }
 

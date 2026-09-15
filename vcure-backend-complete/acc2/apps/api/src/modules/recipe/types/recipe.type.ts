@@ -1,4 +1,4 @@
-import { RecipeDifficulty } from '@prisma/client';
+export type RecipeDifficulty = 'easy' | 'medium' | 'hard' | string;
 
 /** ACC1 `RecipeCategory` — closed union, sourced from the consumer contract. */
 export const RECIPE_CATEGORIES = [

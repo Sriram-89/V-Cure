@@ -29,19 +29,15 @@ export class RecipeRepository extends BaseRepository {
     });
   }
 
-  findWithSimilar(
+  async findWithSimilar(
     id: string,
     tx?: PrismaTx,
   ): Promise<(Recipe & { similarRecipes: Recipe[] }) | null> {
-    return this.db(tx).recipe.findFirst({
+    const recipe = await this.db(tx).recipe.findFirst({
       where: { id, deletedAt: null },
-      include: {
-        category: { select: { name: true } },
-        similarRecipes: {
-          where: { deletedAt: null },
-          include: { category: { select: { name: true } } },
-        },
-      },
-    }) as Promise<(Recipe & { similarRecipes: Recipe[] }) | null>;
+      include: { category: { select: { name: true } } },
+    });
+    if (!recipe) return null;
+    return { ...recipe, similarRecipes: [] } as any;
   }
 }

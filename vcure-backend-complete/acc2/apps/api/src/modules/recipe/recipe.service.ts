@@ -38,17 +38,18 @@ export class RecipeService {
   private toSummary(
     recipe: Recipe & { category?: { name: string } | null },
   ): RecipeSummaryResponse {
+    const r = recipe as any;
     return {
       id: recipe.id,
       title: recipe.title,
       category: recipe.category?.name ?? '',
-      imageQuery: recipe.imageQuery ?? '',
+      imageQuery: r.imageQuery ?? recipe.title,
       // ACC1's single cooking time = ACC3's prep + cook. ACC3's split is
       // preserved canonically; only the aggregate is produced here.
       cookingTimeMinutes: recipe.prepTimeMinutes + recipe.cookTimeMinutes,
-      difficulty: (recipe.difficulty ?? 'EASY') as RecipeSummaryResponse['difficulty'],
-      calories: recipe.calories ?? 0,
-      dietTags: recipe.dietTags,
+      difficulty: (recipe.difficulty ?? 'easy') as RecipeSummaryResponse['difficulty'],
+      calories: r.calories ?? 0,
+      dietTags: r.dietTags ?? [],
       averageRating: 0,
       ratingCount: 0,
       isFavorite: false,
