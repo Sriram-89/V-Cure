@@ -55,14 +55,14 @@ interface OnboardingState {
 }
 
 const initialDraft: OnboardingDraft = {
-  personalInfo: { gender: "MALE", heightCm: 170, weightKg: 70, age: 32 },
-  healthProfile: { gender: "MALE", heightCm: 170, weightKg: 70 },
+  personalInfo: {},
+  healthProfile: {},
   medicalProfile: { conditions: [], allergies: [], medications: [] },
-  goals: { primaryGoal: "MANAGE_CONDITION", timeline: "THREE_MONTHS" },
-  diabetesCategory: { category: "PREDIABETES", isGestational: false },
-  glucoseLabs: { fastingGlucoseMgDl: 110, hba1cPercent: 6.1, dontKnowWillUploadReport: false },
-  lifestyle: { activityLevel: "MODERATELY_ACTIVE", sleepHours: 7, stressLevel: "MODERATE" },
-  foodPreferences: { dietType: "VEGETARIAN", eggPreference: true, avoidIngredients: [] },
+  goals: {},
+  diabetesCategory: {},
+  glucoseLabs: { dontKnowWillUploadReport: false },
+  lifestyle: {},
+  foodPreferences: { avoidIngredients: [] },
   allergies: { allergies: [], intolerances: [] },
   medicalConditions: { conditions: [] },
   medications: { medications: [] },
