@@ -47,12 +47,12 @@ export default function DashboardPage() {
     router.replace(ROUTES.LOGIN);
   };
 
-  const rawFullName = draft.personalInfo?.fullName && draft.personalInfo.fullName.trim() !== ""
-    ? draft.personalInfo.fullName
-    : authUser?.fullName && authUser.fullName.trim() !== ""
+  const rawFullName = authUser?.fullName && authUser.fullName.trim() !== ""
     ? authUser.fullName
     : data?.fullName && data.fullName.trim() !== ""
     ? data.fullName
+    : draft.personalInfo?.fullName && draft.personalInfo.fullName.trim() !== ""
+    ? draft.personalInfo.fullName
     : null;
 
   const userName = getGreetingName(rawFullName);

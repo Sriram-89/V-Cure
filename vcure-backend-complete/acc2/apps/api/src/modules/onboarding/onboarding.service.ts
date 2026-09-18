@@ -64,7 +64,6 @@ export class OnboardingService {
           {
             dateOfBirth: dto.personalInfo.dateOfBirth ? new Date(dto.personalInfo.dateOfBirth) : undefined,
             gender: (dto.personalInfo.gender as any) || undefined,
-            phoneNumber: dto.personalInfo.phone || undefined,
           },
           tx,
         );
@@ -83,8 +82,6 @@ export class OnboardingService {
         primaryGoal: this.healthProfileService.toCanonicalGoalPublic(
           dto.goals?.primaryGoal || 'GENERAL_WELLNESS',
         ),
-        goalTimeline: dto.goals?.timeline,
-        targetWeightKg: dto.goals?.targetWeightKg ?? null,
       };
       await this.healthProfileRepository.upsertByUserId(
         userId,
@@ -94,10 +91,10 @@ export class OnboardingService {
       );
 
       const lifestyleData = {
+        activityLevel: (dto.lifestyle?.activityLevel as any) || 'MODERATELY_ACTIVE',
         sleepHoursAvg: dto.lifestyle?.sleepHours || 7,
         smokingStatus: dto.lifestyle?.smokingStatus,
-        alcoholConsumption: dto.lifestyle?.alcoholConsumption,
-        dietType: dto.lifestyle?.dietType,
+        alcoholStatus: dto.lifestyle?.alcoholConsumption,
       };
       await this.lifestyleRepository.upsertByUserId(
         userId,
