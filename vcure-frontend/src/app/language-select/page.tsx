@@ -28,8 +28,8 @@ export default function LanguageSelectPage() {
 
   const [selected, setSelected] = useState<Language>(currentLanguage || "en");
 
-  const handleConfirm = async () => {
-    await setLanguage(selected);
+  const handleConfirm = () => {
+    void setLanguage(selected);
     router.push("/auth/register");
   };
 

@@ -23,6 +23,7 @@ import { ROUTES } from "@/constants/routes";
 import type { MealSlot } from "@/types/meals";
 
 import { getGreetingName } from "@/lib/cn";
+import { getAuthoritativeFullName } from "@/lib/identity-resolver";
 import { CompactHealthMonitoringCard } from "@/components/dashboard/compact-health-monitoring-card";
 import { RecommendedHealthDevicesSection } from "@/components/dashboard/recommended-devices-section";
 import { Pill } from "lucide-react";
@@ -47,13 +48,7 @@ export default function DashboardPage() {
     router.replace(ROUTES.LOGIN);
   };
 
-  const rawFullName = authUser?.fullName && authUser.fullName.trim() !== ""
-    ? authUser.fullName
-    : data?.fullName && data.fullName.trim() !== ""
-    ? data.fullName
-    : draft.personalInfo?.fullName && draft.personalInfo.fullName.trim() !== ""
-    ? draft.personalInfo.fullName
-    : null;
+  const rawFullName = getAuthoritativeFullName(authUser, data?.fullName, draft);
 
   const userName = getGreetingName(rawFullName);
   const userAvatar = authUser?.avatarUrl || (draft.personalInfo as any)?.avatarUrl || null;

@@ -6,6 +6,8 @@ import { useOnboardingStore } from "@/store/onboarding-store";
 import { ApiError } from "@/lib/api-client";
 import { ROUTES } from "@/constants/routes";
 
+import { profileService } from "@/services/profile-service";
+
 export function useCompleteOnboarding() {
   const router = useRouter();
   const resetOnboarding = useOnboardingStore((state) => state.reset);
@@ -21,14 +23,25 @@ export function useCompleteOnboarding() {
         const res = await onboardingService.complete(payload);
         return res;
       } catch (err) {
-        // Fallback for offline demo mode
+        // Fallback for offline mode
         return { onboardingCompleted: true, bmi: 24.2, riskFlags: [] };
       }
     },
     onSuccess: () => {
       completeOnboardingState();
+      const draft = useOnboardingStore.getState().draft;
+      const canonicalName = draft.personalInfo?.fullName;
       if (user && accessToken && refreshToken) {
-        setSession({ ...user, onboardingCompleted: true }, accessToken, refreshToken);
+        const updatedUser = {
+          ...user,
+          onboardingCompleted: true,
+          ...(canonicalName && canonicalName.trim() !== "" ? { fullName: canonicalName.trim() } : {})
+        };
+        setSession(updatedUser, accessToken, refreshToken);
+      }
+      if (canonicalName && canonicalName.trim() !== "") {
+        const phone = (draft.personalInfo as any)?.phone || "+91 9876543210";
+        void profileService.updateUserProfile({ fullName: canonicalName.trim(), phone });
       }
       router.push(ROUTES.DASHBOARD);
     }

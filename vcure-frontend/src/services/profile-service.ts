@@ -42,16 +42,11 @@ export const profileService = {
     useOnboardingStore.getState().updatePersonalInfo(payload as any);
     const { useAuthStore } = require("@/store/auth-store");
     const currentSession = useAuthStore.getState();
-    if (currentSession.user) {
-      currentSession.setSession(
-        {
-          ...currentSession.user,
-          fullName: payload.fullName,
-          avatarUrl: payload.avatarUrl !== undefined ? payload.avatarUrl : currentSession.user.avatarUrl
-        },
-        currentSession.accessToken || "",
-        currentSession.refreshToken || ""
-      );
+    if (payload.fullName) {
+      currentSession.updateUser({
+        fullName: payload.fullName,
+        ...(payload.avatarUrl !== undefined ? { avatarUrl: payload.avatarUrl } : {})
+      });
     }
     try {
       return await apiClient.patch<UserProfileDto>("/user/profile", payload);

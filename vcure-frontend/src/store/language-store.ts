@@ -18,11 +18,16 @@ export const useLanguageStore = create<LanguageState>()(
 
       setLanguage: async (lang: Language) => {
         set({ language: lang, hasSelectedLanguage: true });
-        try {
-          // Sync language to backend account preference if logged in
-          await apiClient.patch("/users/me/language", { language: lang });
-        } catch {
-          // Fall back gracefully to client store persistence if offline or unauthenticated
+        // Only attempt backend sync if user is authenticated
+        const accessToken = typeof window !== "undefined"
+          ? (JSON.parse(localStorage.getItem("vcure-auth") || "{}")?.state?.accessToken)
+          : null;
+        if (accessToken) {
+          try {
+            await apiClient.patch("/users/me/language", { language: lang });
+          } catch {
+            // Fall back gracefully to client store persistence if offline
+          }
         }
       },
 

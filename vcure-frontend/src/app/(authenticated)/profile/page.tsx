@@ -28,6 +28,8 @@ import { FitnessDevicesSection } from "@/components/profile/fitness-devices-sect
 import { UserAvatar } from "@/components/ui/user-avatar";
 import type { Language } from "@/constants/translations";
 
+import { getAuthoritativeFullName } from "@/lib/identity-resolver";
+
 export default function ProfilePage() {
   const user = useAuthStore((state) => state.user);
   const clearSession = useAuthStore((state) => state.clearSession);
@@ -38,11 +40,7 @@ export default function ProfilePage() {
 
   const [activeTab, setActiveTab] = useState<"overview" | "family" | "vault" | "devices" | "edit-medical">("overview");
 
-  const userName = draft.personalInfo?.fullName
-    ? draft.personalInfo.fullName
-    : user?.fullName && user.fullName.trim() !== ""
-    ? user.fullName
-    : "User";
+  const userName = getAuthoritativeFullName(user, null, draft);
   const userEmail = user?.email || "";
   const userAvatar = user?.avatarUrl || (draft.personalInfo as any)?.avatarUrl || null;
 

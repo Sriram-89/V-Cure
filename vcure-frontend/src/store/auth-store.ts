@@ -8,6 +8,7 @@ interface AuthState {
   accessToken: string | null;
   refreshToken: string | null;
   setSession: (user: AuthUserDto, accessToken: string, refreshToken: string) => void;
+  updateUser: (user: Partial<AuthUserDto>) => void;
   clearSession: () => void;
 }
 
@@ -23,6 +24,16 @@ export const useAuthStore = create<AuthState>()(
           useOnboardingStore.getState().initForUser(user.id, user.fullName);
         }
       },
+      updateUser: (updatedUser) => {
+        set((state) => {
+          if (!state.user) return state;
+          const newUser = { ...state.user, ...updatedUser };
+          if (newUser.id && updatedUser.fullName) {
+            useOnboardingStore.getState().initForUser(newUser.id, newUser.fullName);
+          }
+          return { user: newUser };
+        });
+      },
       clearSession: () => {
         useOnboardingStore.getState().clearForLogout();
         set({ user: null, accessToken: null, refreshToken: null });
@@ -34,7 +45,12 @@ export const useAuthStore = create<AuthState>()(
         accessToken: state.accessToken,
         refreshToken: state.refreshToken,
         user: state.user
-      })
+      }),
+      onRehydrateStorage: () => (state) => {
+        if (state?.user?.id) {
+          useOnboardingStore.getState().initForUser(state.user.id, state.user.fullName);
+        }
+      }
     }
   )
 );
