@@ -62,13 +62,15 @@ export function CompactHealthMonitoringCard() {
             <div>
               <div className="flex items-baseline gap-1">
                 <span className="text-xl font-black text-gray-900">
-                  {latest.value}
+                  {latest.value ?? (latest as any).weightKg ?? 0}
                   {latest.secondaryValue ? `/${latest.secondaryValue}` : ""}
                 </span>
-                <span className="text-[10px] font-bold text-gray-400">{latest.unit}</span>
+                <span className="text-[10px] font-bold text-gray-400">{latest.unit || "kg"}</span>
               </div>
               <p className="text-[10px] font-bold text-emerald-700 capitalize truncate">
-                {latest.metricType.replace("_", " ").toLowerCase()}
+                {(typeof latest.metricType === "string" ? latest.metricType : "WEIGHT")
+                  .replace("_", " ")
+                  .toLowerCase()}
                 {latest.context ? ` (${latest.context.toLowerCase()})` : ""}
               </p>
             </div>
