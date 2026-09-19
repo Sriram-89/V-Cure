@@ -7,16 +7,36 @@ import type {
   RegisterRequestDto
 } from "@/types/auth";
 
-export const authService = {
-  register: (payload: RegisterRequestDto) =>
-    apiClient.post<AuthResponseDto>(API_ENDPOINTS.AUTH.REGISTER, payload, {
-      skipAuth: true
-    }),
+import { demoShowcaseService } from "@/lib/demo-showcase-service";
 
-  login: (payload: LoginRequestDto) =>
-    apiClient.post<AuthResponseDto>(API_ENDPOINTS.AUTH.LOGIN, payload, {
+export const authService = {
+  register: async (payload: RegisterRequestDto): Promise<AuthResponseDto> => {
+    const res = await apiClient.post<AuthResponseDto>(API_ENDPOINTS.AUTH.REGISTER, payload, {
       skipAuth: true
-    }),
+    });
+    if (res?.user?.email) {
+      const demoPersona = demoShowcaseService.getPersona(res.user.email);
+      if (demoPersona && res.user) {
+        res.user.fullName = demoPersona.fullName;
+        demoShowcaseService.initializeDemoPersona(demoPersona, res.user.id);
+      }
+    }
+    return res;
+  },
+
+  login: async (payload: LoginRequestDto): Promise<AuthResponseDto> => {
+    const res = await apiClient.post<AuthResponseDto>(API_ENDPOINTS.AUTH.LOGIN, payload, {
+      skipAuth: true
+    });
+    if (res?.user?.email) {
+      const demoPersona = demoShowcaseService.getPersona(res.user.email);
+      if (demoPersona && res.user) {
+        res.user.fullName = demoPersona.fullName;
+        demoShowcaseService.initializeDemoPersona(demoPersona, res.user.id);
+      }
+    }
+    return res;
+  },
 
   forgotPassword: (payload: ForgotPasswordRequestDto) =>
     apiClient.post<{ message: string }>("/auth/forgot-password", payload, {

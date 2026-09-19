@@ -5,6 +5,8 @@ import Link from "next/link";
 import { ArrowLeft, Activity, Plus, TrendingUp, TrendingDown, Minus, AlertCircle, Info, Calendar } from "lucide-react";
 import { Container } from "@/components/ui/container";
 import { LogReadingModal } from "@/components/dashboard/log-reading-modal";
+import { useAuthStore } from "@/store/auth-store";
+import { demoShowcaseService } from "@/lib/demo-showcase-service";
 import {
   healthMonitoringService,
   type HealthMetricType,
@@ -12,6 +14,9 @@ import {
 } from "@/services/health-monitoring-service";
 
 export default function HealthMonitoringDetailPage() {
+  const authUser = useAuthStore((state) => state.user);
+  const isDemoAccount = authUser ? demoShowcaseService.isDemoUser(authUser.id) : false;
+
   const [activeMetric, setActiveMetric] = useState<HealthMetricType>("BLOOD_GLUCOSE");
   const [timeRangeDays, setTimeRangeDays] = useState<number>(30);
   const [readings, setReadings] = useState<HealthReadingItem[]>([]);
@@ -80,6 +85,19 @@ export default function HealthMonitoringDetailPage() {
   return (
     <div className="min-h-screen bg-gray-50 pb-28">
       <Container className="max-w-md px-4 py-5 space-y-5">
+        {/* Demo Indicator Banner */}
+        {isDemoAccount ? (
+          <div className="rounded-3xl border border-amber-200 bg-amber-50 p-3.5 text-xs font-bold text-amber-950 flex items-center gap-3 shadow-xs">
+            <AlertCircle className="h-5 w-5 text-amber-600 shrink-0" />
+            <div>
+              <p className="font-extrabold text-amber-950 uppercase tracking-wider text-[11px]">Demo Showcase Mode</p>
+              <p className="text-amber-800 font-medium text-[11px] mt-0.5">
+                DEMO DATA — Synthetic showcase health readings
+              </p>
+            </div>
+          </div>
+        ) : null}
+
         {/* Navigation Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">

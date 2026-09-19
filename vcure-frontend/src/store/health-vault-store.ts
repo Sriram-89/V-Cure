@@ -58,6 +58,9 @@ interface HealthVaultState {
   deleteDocument: (id: string) => Promise<void>;
 }
 
+import { demoShowcaseService } from "@/lib/demo-showcase-service";
+import { useAuthStore } from "@/store/auth-store";
+
 const initialDocuments: VaultDocument[] = [];
 
 export const useHealthVaultStore = create<HealthVaultState>()(
@@ -66,6 +69,50 @@ export const useHealthVaultStore = create<HealthVaultState>()(
       documents: initialDocuments,
 
       fetchDocuments: async () => {
+        const activeUser = useAuthStore.getState().user;
+        if (activeUser && demoShowcaseService.isDemoUser(activeUser.id)) {
+          const demoReports = demoShowcaseService.getDemoReports(activeUser.id);
+          const demoInsurance = demoShowcaseService.getDemoInsurance(activeUser.id);
+
+          const vaultDocs: VaultDocument[] = [
+            ...demoReports.map((r: any) => ({
+              id: r.id,
+              name: r.name,
+              type: r.type as VaultDocumentType,
+              customTypeLabel: r.customTypeLabel,
+              uploadDate: r.reportDate,
+              hospitalLabName: r.hospitalLabName,
+              reportDate: r.reportDate,
+              ocrStatus: "COMPLETED" as OCRStatus,
+              extractedBiomarkers: r.extractedBiomarkers,
+              isConfirmed: true
+            })),
+            ...demoInsurance.map((pol: any) => ({
+              id: pol.id,
+              name: `${pol.provider} - ${pol.policyName}`,
+              type: "INSURANCE" as VaultDocumentType,
+              uploadDate: pol.startDate,
+              reportDate: pol.startDate,
+              ocrStatus: "COMPLETED" as OCRStatus,
+              isConfirmed: true,
+              insuranceDetails: {
+                provider: pol.provider,
+                policyName: pol.policyName,
+                policyNumber: pol.policyNumber,
+                policyHolder: pol.policyHolder,
+                startDate: pol.startDate,
+                expiryDate: pol.expiryDate,
+                renewalDate: pol.expiryDate,
+                coverageDetails: pol.coverageDetails,
+                supportNumber: pol.supportNumber
+              }
+            }))
+          ];
+
+          set({ documents: vaultDocs });
+          return;
+        }
+
         try {
           const res = await fetch("/api/medical-reports");
           if (res.ok) {

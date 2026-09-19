@@ -8,9 +8,14 @@ import { Button } from "@/components/ui/button";
 import { useHealthVaultStore, type VaultDocument } from "@/store/health-vault-store";
 import { checkReportQuality } from "@/lib/report-quality-checker";
 import { useSwipeBack } from "@/hooks/use-swipe-back";
+import { useAuthStore } from "@/store/auth-store";
+import { demoShowcaseService } from "@/lib/demo-showcase-service";
 
 export default function InsurancePage() {
   useSwipeBack("/dashboard");
+  const authUser = useAuthStore((state) => state.user);
+  const isDemoAccount = authUser ? demoShowcaseService.isDemoUser(authUser.id) : false;
+
   const documents = useHealthVaultStore((state) => state.documents);
   const fetchDocuments = useHealthVaultStore((state) => state.fetchDocuments);
   const addDocumentFile = useHealthVaultStore((state) => state.addDocumentFile);
@@ -131,6 +136,19 @@ export default function InsurancePage() {
       </div>
 
       <Container className="max-w-md px-4 py-5 space-y-5">
+        {/* Demo Indicator Banner */}
+        {isDemoAccount ? (
+          <div className="rounded-3xl border border-amber-200 bg-amber-50 p-4 text-xs font-bold text-amber-950 flex items-center gap-3 shadow-xs">
+            <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0" />
+            <div>
+              <p className="font-extrabold text-amber-950 uppercase tracking-wider text-[11px]">Demo Showcase Mode</p>
+              <p className="text-amber-800 font-medium text-[11px] mt-0.5">
+                DEMO DATA — Not a real medical or insurance record
+              </p>
+            </div>
+          </div>
+        ) : null}
+
         {/* Info Card */}
         <div className="rounded-3xl border border-emerald-100 bg-emerald-50/80 p-4 text-xs text-emerald-900 flex items-start gap-3 shadow-xs">
           <ShieldCheck className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
@@ -167,7 +185,7 @@ export default function InsurancePage() {
                   <div className="flex items-start justify-between">
                     <div>
                       <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-extrabold text-emerald-800 uppercase tracking-wider">
-                        Health Insurance
+                        {isDemoAccount ? "DEMO / SHOWCASE DATA" : "Health Insurance"}
                       </span>
                       <h3 className="text-base font-extrabold text-gray-900 mt-1">
                         {details?.provider || doc.name}
