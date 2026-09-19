@@ -71,6 +71,12 @@ export default function DashboardPage() {
     return ALL_CATALOG_MEALS.find((m) => m.type === slot)!;
   });
 
+  const rawDiabetesCategory = draft.diabetesCategory?.category;
+  const diabetesCategoryLabel =
+    typeof rawDiabetesCategory === "string" && rawDiabetesCategory.trim() !== ""
+      ? rawDiabetesCategory.replace("_", " ")
+      : null;
+
   return (
     <div className="min-h-screen bg-gray-50 pb-28 relative">
       {/* Top Green Hero Banner & Health Score Display */}
@@ -350,11 +356,11 @@ export default function DashboardPage() {
         </div>
 
         {/* Requirement 5: Personalized Setup Badge */}
-        {draft.diabetesCategory?.category ? (
+        {diabetesCategoryLabel ? (
           <div className="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-3 flex items-center justify-between text-xs">
             <div className="flex items-center gap-2 text-emerald-900 font-bold">
               <ShieldCheck className="h-4 w-4 text-emerald-600" />
-              <span>{t.onboardingTitle}: {draft.diabetesCategory.category.replace("_", " ")}</span>
+              <span>{t.onboardingTitle}: {diabetesCategoryLabel}</span>
             </div>
             <Link href="/onboarding" className="text-[11px] font-bold text-emerald-700 hover:underline">
               {t.edit}
