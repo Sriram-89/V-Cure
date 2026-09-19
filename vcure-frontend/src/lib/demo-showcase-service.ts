@@ -5,7 +5,6 @@ import {
   type DemoPersona
 } from "@/constants/demo-showcase-data";
 import { useOnboardingStore } from "@/store/onboarding-store";
-import { useAuthStore } from "@/store/auth-store";
 
 const DEMO_CACHE_PREFIX = "vcure-demo-cache:";
 const DEMO_USER_MAPPINGS_KEY = "vcure-demo-user-mappings";
@@ -72,12 +71,6 @@ export const demoShowcaseService = {
 
     const activeUserId = authenticatedUserId || persona.id;
     saveDemoUserMapping(activeUserId, persona.id);
-
-    // Synchronize authenticated user identity in authStore
-    const authStore = useAuthStore.getState();
-    if (authStore.user) {
-      authStore.updateUser({ fullName: persona.fullName });
-    }
 
     // Initialize User-Scoped Onboarding Draft under activeUserId
     const onboardingStore = useOnboardingStore.getState();
